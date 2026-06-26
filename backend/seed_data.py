@@ -1,0 +1,16 @@
+"""Seed entries for the directory. Mirrors the original prototype data."""
+
+SEED = [
+    {"id": "q4", "category": "quedadas", "title": "Vigilia y colecta — Caracas", "description": "Punto de encuentro para organizar brigadas y recibir donaciones físicas.", "url": "https://ejemplo.org/ccs", "city": "Caracas", "country": "Venezuela", "event_date": "2026-06-27", "verified": False},
+    {"id": "q1", "category": "quedadas", "title": "Jornada de recolección — Miami", "description": "Acopio de medicinas, agua y alimentos no perecederos para envío.", "url": "https://ejemplo.org/miami", "city": "Miami, FL", "country": "Estados Unidos", "event_date": "2026-06-28", "verified": True},
+    {"id": "d1", "category": "donaciones", "title": "Cruz Roja Venezolana — Emergencia", "description": "Donaciones para atención médica y refugio a familias afectadas por los sismos.", "url": "https://www.cruzrojavenezolana.org", "city": "Nacional", "verified": True},
+    {"id": "e1", "category": "emergencia", "title": "Emergencias 911", "description": "Línea nacional: bomberos, policía y ambulancias en todo el país.", "phone": "911", "city": "Nacional", "verified": True},
+    {"id": "p1", "category": "paginas", "title": "FUNVISIS — Información sísmica oficial", "description": "Reportes de actividad sísmica y recomendaciones de seguridad.", "url": "https://www.funvisis.gob.ve", "city": "Nacional", "verified": True},
+    {"id": "d2", "category": "donaciones", "title": "Recaudación: familias de El Tigre", "description": "Campaña vecinal para reconstrucción de viviendas. (Ejemplo de demostración.)", "url": "https://ejemplo.org/eltigre", "city": "Anzoátegui", "verified": False},
+    {"id": "q3", "category": "quedadas", "title": "Punto de acopio — Santo Domingo", "description": "Recepción de donaciones físicas en el centro comunitario venezolano.", "url": "https://ejemplo.org/rd", "city": "Santo Domingo, RD", "country": "Rep. Dominicana", "event_date": "2026-06-28", "verified": True},
+    {"id": "p2", "category": "paginas", "title": "Mapa colaborativo de daños", "description": "Sitio ciudadano que mapea zonas afectadas y reportes en tiempo real. (Ejemplo.)", "url": "https://ejemplo.org/mapa", "verified": False},
+    {"id": "d3", "category": "donaciones", "title": "Insumos médicos — Hospital regional", "description": "Compra de medicinas y material de curación. (Ejemplo de demostración.)", "url": "https://ejemplo.org/insumos", "city": "Cumaná", "verified": True},
+    {"id": "q2", "category": "quedadas", "title": "Recaudación solidaria — Madrid", "description": "Encuentro de la comunidad venezolana. Aportes para envío de insumos.", "url": "https://ejemplo.org/madrid", "city": "Madrid", "country": "España", "event_date": "2026-06-29", "verified": False},
+    {"id": "p3", "category": "paginas", "title": "Personas a salvo — registro comunitario", "description": "Listado donde reportar y buscar personas confirmadas a salvo. (Ejemplo.)", "url": "https://ejemplo.org/asalvo", "verified": False},
+    {"id": "e2", "category": "emergencia", "title": "Protección Civil — Caracas", "description": "Coordinación de rescate y refugios. (Número de ejemplo, reemplazar por el oficial.)", "phone": "0212-000-0000", "city": "Caracas", "verified": False},
+]

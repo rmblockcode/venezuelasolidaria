@@ -1,0 +1,396 @@
+import json
+import os
+import queue
+import re
+import secrets
+from datetime import datetime, timedelta, timezone
+from functools import wraps
+
+import jwt
+from flask import Flask, Response, jsonify, request, stream_with_context
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from events import broker
+from models import db, Resource, AdminUser
+from seed_data import SEED
+
+load_dotenv()
+
+DEFAULT_DB = "postgresql+psycopg://vzla:vzla@localhost:5432/venezuelasolidaria"
+
+
+ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def valid_iso_date(value):
+    """True for an empty value or a YYYY-MM-DD string (the date picker's format)."""
+    if not value:
+        return True
+    return bool(ISO_DATE_RE.match(value.strip()))
+
+
+def valid_date_range(start, end):
+    """End is optional; when both are ISO dates, end must be >= start."""
+    start = (start or "").strip()
+    end = (end or "").strip()
+    if start and end and ISO_DATE_RE.match(start) and ISO_DATE_RE.match(end):
+        return end >= start
+    return True
+
+
+def normalize_url(u):
+    u = (u or "").strip().lower()
+    u = re.sub(r"^https?://", "", u)
+    u = re.sub(r"^www\.", "", u)
+    u = re.sub(r"/+$", "", u)
+    return u
+
+
+def only_digits(s):
+    return re.sub(r"\D", "", s or "")
+
+
+def seed_if_empty():
+    if Resource.query.count() > 0:
+        return
+    for row in SEED:
+        db.session.add(Resource(status="published", **row))
+    db.session.commit()
+
+
+def seed_admin():
+    """Create the initial moderator from env vars if no admin exists yet."""
+    email = (os.environ.get("ADMIN_EMAIL") or "").strip().lower()
+    password = os.environ.get("ADMIN_PASSWORD") or ""
+    if not email or not password:
+        return
+    if AdminUser.query.filter_by(email=email).first():
+        return
+    db.session.add(AdminUser(email=email, password_hash=generate_password_hash(password)))
+    db.session.commit()
+
+
+def resolve_db_url():
+    """Managed providers (Neon, Render, Heroku) hand out postgres:// or
+    postgresql:// URLs; SQLAlchemy + psycopg3 needs the postgresql+psycopg:// dialect."""
+    url = os.environ.get("DATABASE_URL", DEFAULT_DB)
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url
+
+
+def create_app():
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = resolve_db_url()
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-insecure-change-me")
+    app.config["JWT_EXP_HOURS"] = int(os.environ.get("JWT_EXP_HOURS", "12"))
+    # Reject oversized request bodies outright (anti-abuse). Default 64 KB.
+    app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_CONTENT_LENGTH", str(64 * 1024)))
+
+    # Trust the reverse proxy's X-Forwarded-For so rate limiting keys on the real
+    # client IP instead of the proxy. Configurable for the deployment topology.
+    proxy_hops = int(os.environ.get("PROXY_HOPS", "0"))
+    if proxy_hops > 0:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_hops, x_proto=proxy_hops)
+
+    # Allow the Next.js dev server (and any configured origins) to call the API.
+    # Authorization header + POST/PATCH are needed for the admin panel.
+    origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": [o.strip() for o in origins.split(",")]}},
+        allow_headers=["Content-Type", "Authorization"],
+        methods=["GET", "POST", "PATCH", "OPTIONS"],
+    )
+
+    # Rate limiting (anti-DoS / brute force). In-memory by default; point
+    # RATELIMIT_STORAGE_URI at Redis in production for multi-process correctness.
+    limiter = Limiter(
+        key_func=get_remote_address,
+        app=app,
+        default_limits=[os.environ.get("RATELIMIT_DEFAULT", "240 per hour")],
+        storage_uri=os.environ.get("RATELIMIT_STORAGE_URI", "memory://"),
+        strategy="fixed-window",
+    )
+
+    @app.errorhandler(429)
+    def ratelimit_handler(_e):
+        return jsonify({"error": "Demasiadas solicitudes. Intenta de nuevo más tarde."}), 429
+
+    @app.errorhandler(413)
+    def too_large_handler(_e):
+        return jsonify({"error": "La solicitud es demasiado grande."}), 413
+
+    db.init_app(app)
+
+    with app.app_context():
+        db.create_all()
+        seed_if_empty()
+        seed_admin()
+
+    # ---- auth helpers ----
+    def make_token(user):
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": str(user.id),
+            "email": user.email,
+            "iat": now,
+            "exp": now + timedelta(hours=app.config["JWT_EXP_HOURS"]),
+        }
+        return jwt.encode(payload, app.config["SECRET_KEY"], algorithm="HS256")
+
+    def require_admin(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            header = request.headers.get("Authorization", "")
+            if not header.startswith("Bearer "):
+                return jsonify({"error": "No autorizado."}), 401
+            token = header[len("Bearer "):].strip()
+            try:
+                jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
+            except jwt.PyJWTError:
+                return jsonify({"error": "Sesión inválida o expirada."}), 401
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    @app.get("/api/health")
+    @limiter.exempt
+    def health():
+        return jsonify({"status": "ok"})
+
+    heartbeat = int(os.environ.get("SSE_HEARTBEAT_SECONDS", "20"))
+
+    @app.get("/api/stream")
+    @limiter.exempt
+    def stream():
+        """Server-Sent Events: lightweight 'which list changed' signals only.
+
+        Carries no record data, so it's safe to expose publicly; clients refetch
+        through the existing (authenticated, where needed) GET endpoints.
+        """
+
+        @stream_with_context
+        def gen():
+            q = broker.subscribe()
+            try:
+                yield ": connected\n\n"
+                while True:
+                    try:
+                        payload = q.get(timeout=heartbeat)
+                        yield f"data: {json.dumps(payload)}\n\n"
+                    except queue.Empty:
+                        yield ": ping\n\n"
+            finally:
+                broker.unsubscribe(q)
+
+        return Response(
+            gen(),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
+        )
+
+    @app.get("/api/resources")
+    def list_resources():
+        """Published directory entries. Optional ?category= and ?country= filters."""
+        q = Resource.query.filter_by(status="published")
+        category = request.args.get("category")
+        if category and category != "todos":
+            q = q.filter_by(category=category)
+        country = request.args.get("country")
+        if country and country != "todos":
+            q = q.filter_by(country=country)
+        items = q.order_by(Resource.created_at.desc()).all()
+        return jsonify({"items": [r.to_dict() for r in items]})
+
+    @app.post("/api/submissions")
+    @limiter.limit("5 per minute; 20 per hour")
+    def create_submission():
+        """Public submission. Stored as a pending resource pending review."""
+        data = request.get_json(silent=True) or {}
+        category = (data.get("category") or "donaciones").strip()
+        title = (data.get("title") or "").strip()
+        raw_url = (data.get("url") or "").strip()
+
+        if category not in Resource.CATEGORIES:
+            return jsonify({"error": "Categoría no válida."}), 400
+        if not title:
+            return jsonify({"error": "Agrega un nombre o título para el enlace."}), 400
+        if not raw_url:
+            return jsonify({"error": "Agrega el enlace (URL) o un teléfono de contacto."}), 400
+        # Length caps so a single submission can't store abusive amounts of text.
+        if len(title) > 280:
+            return jsonify({"error": "El título es demasiado largo (máx. 280 caracteres)."}), 400
+        if len(data.get("desc") or "") > 2000:
+            return jsonify({"error": "La descripción es demasiado larga (máx. 2000 caracteres)."}), 400
+        if len(raw_url) > 2048:
+            return jsonify({"error": "El enlace es demasiado largo."}), 400
+        if not valid_iso_date(data.get("date")) or not valid_iso_date(data.get("dateEnd")):
+            return jsonify({"error": "Fecha no válida."}), 400
+        if not valid_date_range(data.get("date"), data.get("dateEnd")):
+            return jsonify({"error": "La fecha de fin no puede ser anterior a la de inicio."}), 400
+
+        looks_like_phone = bool(re.match(r"^[\d\s()+\-]+$", raw_url)) and not raw_url.lower().startswith("http")
+        url = None if looks_like_phone else raw_url
+        phone = raw_url if looks_like_phone else None
+
+        n = normalize_url(raw_url)
+        digits = only_digits(raw_url)
+
+        # Reject duplicates against everything already in the table.
+        for r in Resource.query.all():
+            if r.url and normalize_url(r.url) == n and n:
+                if r.status == "pending":
+                    return jsonify({"error": "Este enlace ya fue enviado y está en revisión."}), 409
+                return jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409
+            if r.phone and digits and only_digits(r.phone) == digits:
+                return jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409
+
+        entry = Resource(
+            id=secrets.token_hex(8),
+            category=category,
+            title=title,
+            description=(data.get("desc") or "").strip(),
+            url=url,
+            phone=phone,
+            city=(data.get("city") or "").strip() or None,
+            country=(data.get("country") or "").strip() or None,
+            event_date=(data.get("date") or "").strip() or None,
+            event_end_date=(data.get("dateEnd") or "").strip() or None,
+            contact=(data.get("contact") or "").strip() or None,
+            verified=False,
+            status="pending",
+        )
+        db.session.add(entry)
+        db.session.commit()
+        broker.publish({"scopes": ["pending"]})
+        return jsonify({"ok": True, "id": entry.id}), 201
+
+    # ---- admin / moderation ----
+    @app.post("/api/admin/login")
+    @limiter.limit("8 per minute; 40 per hour")
+    def admin_login():
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+        user = AdminUser.query.filter_by(email=email).first()
+        if not user or not check_password_hash(user.password_hash, password):
+            return jsonify({"error": "Correo o contraseña incorrectos."}), 401
+        return jsonify({"token": make_token(user), "email": user.email})
+
+    @app.get("/api/admin/submissions")
+    @require_admin
+    def admin_submissions():
+        """List entries by status (default: pending submissions awaiting review)."""
+        status = request.args.get("status", "pending")
+        items = (
+            Resource.query.filter_by(status=status)
+            .order_by(Resource.created_at.desc())
+            .all()
+        )
+        return jsonify({"items": [r.to_admin_dict() for r in items]})
+
+    @app.post("/api/admin/submissions/<sid>/approve")
+    @require_admin
+    def admin_approve(sid):
+        entry = db.session.get(Resource, sid)
+        if not entry:
+            return jsonify({"error": "No encontrado."}), 404
+        data = request.get_json(silent=True) or {}
+        verified = data.get("verified", True)
+        entry.status = "published"
+        entry.verified = bool(verified)
+        db.session.commit()
+        broker.publish({"scopes": ["pending", "published"]})
+        return jsonify({"ok": True, "item": entry.to_admin_dict()})
+
+    @app.post("/api/admin/submissions/<sid>/reject")
+    @require_admin
+    def admin_reject(sid):
+        entry = db.session.get(Resource, sid)
+        if not entry:
+            return jsonify({"error": "No encontrado."}), 404
+        scope = "published" if entry.status == "published" else "pending"
+        db.session.delete(entry)
+        db.session.commit()
+        broker.publish({"scopes": [scope]})
+        return jsonify({"ok": True})
+
+    @app.post("/api/admin/submissions/<sid>/unpublish")
+    @require_admin
+    def admin_unpublish(sid):
+        """Pull a published entry back to pending (removes it from the public list)."""
+        entry = db.session.get(Resource, sid)
+        if not entry:
+            return jsonify({"error": "No encontrado."}), 404
+        entry.status = "pending"
+        db.session.commit()
+        broker.publish({"scopes": ["pending", "published"]})
+        return jsonify({"ok": True, "item": entry.to_admin_dict()})
+
+    @app.patch("/api/admin/submissions/<sid>")
+    @require_admin
+    def admin_edit(sid):
+        """Edit fields (works on pending or published). Only provided keys change."""
+        entry = db.session.get(Resource, sid)
+        if not entry:
+            return jsonify({"error": "No encontrado."}), 404
+        data = request.get_json(silent=True) or {}
+        if "category" in data:
+            if data["category"] not in Resource.CATEGORIES:
+                return jsonify({"error": "Categoría no válida."}), 400
+            entry.category = data["category"]
+        if "verified" in data:
+            entry.verified = bool(data["verified"])
+        if ("date" in data and not valid_iso_date(data.get("date"))) or (
+            "dateEnd" in data and not valid_iso_date(data.get("dateEnd"))
+        ):
+            return jsonify({"error": "Fecha no válida."}), 400
+        new_start = data["date"] if "date" in data else entry.event_date
+        new_end = data["dateEnd"] if "dateEnd" in data else entry.event_end_date
+        if not valid_date_range(new_start, new_end):
+            return jsonify({"error": "La fecha de fin no puede ser anterior a la de inicio."}), 400
+        field_map = {
+            "title": "title",
+            "desc": "description",
+            "url": "url",
+            "phone": "phone",
+            "city": "city",
+            "country": "country",
+            "date": "event_date",
+            "dateEnd": "event_end_date",
+            "contact": "contact",
+        }
+        for key, attr in field_map.items():
+            if key in data:
+                value = (data[key] or "").strip()
+                setattr(entry, attr, value or None)
+        db.session.commit()
+        broker.publish({"scopes": [entry.status]})
+        return jsonify({"ok": True, "item": entry.to_admin_dict()})
+
+    return app
+
+
+app = create_app()
+
+
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5001)),
+        debug=True,
+        threaded=True,
+    )

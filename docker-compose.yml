@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vzla-db
+    environment:
+      POSTGRES_USER: vzla
+      POSTGRES_PASSWORD: vzla
+      POSTGRES_DB: venezuelasolidaria
+    ports:
+      - "5432:5432"
+    volumes:
+      - vzla_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vzla -d venezuelasolidaria"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  vzla_pgdata:
