@@ -1,5 +1,6 @@
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
+const FOLDER = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER || "";
 
 export const MAX_IMAGE_MB = 3;
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
@@ -20,6 +21,9 @@ export async function uploadImage(file: File): Promise<string> {
   const body = new FormData();
   body.append("file", file);
   body.append("upload_preset", UPLOAD_PRESET);
+  // Optional: place uploads in a specific Cloudinary folder. You can also set
+  // the folder directly on the unsigned preset instead of using this env var.
+  if (FOLDER) body.append("folder", FOLDER);
 
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
     method: "POST",
