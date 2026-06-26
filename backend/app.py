@@ -1,8 +1,10 @@
+import hashlib
 import json
 import os
 import queue
 import re
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
@@ -288,6 +290,36 @@ def create_app():
         db.session.commit()
         broker.publish({"scopes": ["pending"]})
         return jsonify({"ok": True, "id": entry.id}), 201
+
+    # ---- Cloudinary signed upload ----
+    @app.post("/api/cloudinary/signature")
+    @limiter.limit("20 per minute; 120 per hour")
+    def cloudinary_signature():
+        """Issue a short-lived signature so the browser can upload to Cloudinary
+        without ever seeing the API secret. The folder is signed server-side so it
+        can't be tampered with. Public (the submit form is public) but rate-limited."""
+        cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "").strip()
+        api_key = os.environ.get("CLOUDINARY_API_KEY", "").strip()
+        api_secret = os.environ.get("CLOUDINARY_API_SECRET", "").strip()
+        folder = os.environ.get("CLOUDINARY_FOLDER", "VenezuelaSolidaria").strip()
+        if not (cloud_name and api_key and api_secret):
+            return jsonify({"error": "Cloudinary no está configurado en el servidor."}), 503
+
+        timestamp = int(time.time())
+        # Params to sign (everything except file, api_key, cloud_name, signature).
+        params = {"timestamp": timestamp}
+        if folder:
+            params["folder"] = folder
+        to_sign = "&".join(f"{k}={params[k]}" for k in sorted(params))
+        signature = hashlib.sha1((to_sign + api_secret).encode("utf-8")).hexdigest()
+
+        return jsonify({
+            "cloudName": cloud_name,
+            "apiKey": api_key,
+            "timestamp": timestamp,
+            "signature": signature,
+            "folder": folder or None,
+        })
 
     # ---- admin / moderation ----
     @app.post("/api/admin/login")

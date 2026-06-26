@@ -1,6 +1,4 @@
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
-const FOLDER = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
 export const MAX_IMAGE_MB = 3;
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
@@ -13,26 +11,42 @@ export function validateImageFile(file: File): string | null {
   return null;
 }
 
-/** Uploads to Cloudinary (unsigned preset) and returns the secure URL. */
+interface SignaturePayload {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder?: string | null;
+}
+
+/**
+ * Signed upload: the browser asks our backend for a signature (the API secret
+ * never leaves the server), then uploads the file directly to Cloudinary.
+ * Returns the resulting secure URL.
+ */
 export async function uploadImage(file: File): Promise<string> {
-  if (!CLOUD_NAME || !UPLOAD_PRESET) {
-    throw new Error("Falta configurar Cloudinary (NEXT_PUBLIC_CLOUDINARY_*).");
+  const sigRes = await fetch(`${API_BASE}/api/cloudinary/signature`, { method: "POST" });
+  if (!sigRes.ok) {
+    const data = await sigRes.json().catch(() => ({}));
+    throw new Error(data.error || "No se pudo preparar la subida de imagen.");
   }
+  const sig = (await sigRes.json()) as SignaturePayload;
+
   const body = new FormData();
   body.append("file", file);
-  body.append("upload_preset", UPLOAD_PRESET);
-  // Optional: place uploads in a specific Cloudinary folder. You can also set
-  // the folder directly on the unsigned preset instead of using this env var.
-  if (FOLDER) body.append("folder", FOLDER);
+  body.append("api_key", sig.apiKey);
+  body.append("timestamp", String(sig.timestamp));
+  body.append("signature", sig.signature);
+  if (sig.folder) body.append("folder", sig.folder);
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+  const upRes = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
     method: "POST",
     body,
   });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
+  if (!upRes.ok) {
+    const data = await upRes.json().catch(() => ({}));
     throw new Error(data?.error?.message || "No se pudo subir la imagen.");
   }
-  const data = await res.json();
+  const data = await upRes.json();
   return data.secure_url as string;
 }

@@ -102,24 +102,26 @@ El panel de moderación vive en **`http://localhost:3000/admin`** (no enlazado d
 La autenticación usa **JWT** (`Authorization: Bearer`), no cookies, para funcionar entre dominios
 cuando frontend y backend se despliegan por separado.
 
-## Imágenes (Cloudinary)
+## Imágenes (Cloudinary — subida firmada)
 
-La subida de imágenes usa **Cloudinary con un unsigned upload preset**: el navegador sube el
-archivo directo a Cloudinary y la app solo guarda la `secure_url`. Ningún secreto vive en el repo
-ni en el bundle.
+La subida usa **firma del lado servidor**: el navegador pide una firma a
+`POST /api/cloudinary/signature` (rate-limitado), y con ella sube el archivo directo a Cloudinary.
+El **API Secret vive solo en el backend** (Render), nunca en el frontend ni en el repo. La app solo
+guarda la `secure_url` resultante. La carpeta se firma en el servidor, así que no se puede manipular.
 
 Configuración (una vez):
-1. Crea cuenta en Cloudinary → anota el **Cloud name**.
-2. Settings → Upload → **Add upload preset** con **Signing Mode: Unsigned**. Endurécelo: límite de
-   tamaño (~3 MB), formatos solo `jpg/png`, y una carpeta. (Opcional: moderación automática.)
-3. Pon estas variables públicas en `frontend/.env.local` y en Vercel:
-   - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
-   - `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`
+1. Crea cuenta en Cloudinary → en **Settings → Account** copia el **Cloud name**, y en
+   **Settings → API Keys** copia **API Key** y **API Secret**.
+2. Pon estas variables **en el backend** (`backend/.env` en local y en **Render**):
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_API_KEY`
+   - `CLOUDINARY_API_SECRET`  ← secreto, solo aquí
+   - `CLOUDINARY_FOLDER` (p. ej. `VenezuelaSolidaria`)
+3. El frontend **no** necesita variables de Cloudinary.
 
 El control acepta **arrastrar, pegar (Ctrl/Cmd+V) o elegir archivo**; valida JPG/PNG y ≤ 3 MB en el
-cliente. El backend solo valida que la imagen sea un enlace `http(s)` y la sirve como `<img>`; la
-publicación sigue pasando por moderación. (Endurecimiento futuro: subida **firmada** con
-`CLOUDINARY_API_SECRET` en un endpoint del backend.)
+cliente. El backend valida además que lo guardado sea un enlace `http(s)`, lo sirve como `<img>`, y
+la publicación sigue pasando por moderación.
 
 > **Esquema:** la columna `image_url` se crea sola en una BD nueva. En una BD existente, una vez:
 > `ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url varchar(2048);`
