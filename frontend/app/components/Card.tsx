@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
+import ExpandableText from "./ExpandableText";
 
 export default function Card({ item }: { item: Resource }) {
   const [copied, setCopied] = useState(false);
@@ -62,7 +63,7 @@ export default function Card({ item }: { item: Resource }) {
         )}
       </div>
       <h3>{item.title}</h3>
-      <p className="desc">{item.desc}</p>
+      {item.desc && <ExpandableText text={item.desc} lines={4} className="desc" />}
       {meta && (
         <div className="meta">
           <span className="pin" />

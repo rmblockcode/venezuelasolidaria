@@ -91,6 +91,7 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .countryrow>.lbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
 .datefilter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
 .datefilter>.lbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
+.datefilter .daterange{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
 .datefilter .sep{color:var(--muted)}
 .datefilter input[type="date"]{padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:600 12.5px/1 'Hanken Grotesk';outline:none;cursor:pointer}
 .datefilter input[type="date"]:focus{border-color:var(--brand)}
@@ -99,6 +100,10 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 
 .statbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:16px}
 .statline{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
+.statbar-controls{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pagesize{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.pagesize select{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font:700 12.5px/1 'Hanken Grotesk';color:var(--ink);cursor:pointer;outline:none}
+.pagesize select:focus{border-color:var(--brand)}
 .viewtoggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px;flex-shrink:0}
 .viewtoggle button{padding:7px 16px;border-radius:999px;border:none;background:transparent;color:var(--muted);font:700 13px/1 'Hanken Grotesk';cursor:pointer;transition:all .12s ease}
 .viewtoggle button.active{background:var(--brand);color:#fff}
@@ -117,7 +122,13 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .dir-row-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
 .dir-row .dir-meta{font-size:12.5px;color:var(--muted);font-weight:600}
 .dir-row h3{margin:0 0 4px;font-family:var(--font-serif),serif;font-weight:600;font-size:18px;line-height:1.25;color:var(--ink)}
-.dir-desc{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dir-desc{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+
+/* expandable description ("Ver más / Ver menos") */
+.exp-wrap{display:flex;flex-direction:column;align-items:flex-start}
+.exp-text.clamped{display:-webkit-box;-webkit-line-clamp:var(--lines,3);-webkit-box-orient:vertical;overflow:hidden}
+.exp-toggle{margin-top:5px;background:none;border:none;padding:0;color:var(--brand);font:700 12.5px/1 'Hanken Grotesk';cursor:pointer}
+.exp-toggle:hover{text-decoration:underline}
 .dir-row-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .dir-row-actions a.primary{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:10px;background:var(--cat);color:#fff;font:700 13px/1 'Hanken Grotesk';text-decoration:none;transition:filter .12s ease}
 .dir-row-actions a.primary:hover{filter:brightness(1.07)}

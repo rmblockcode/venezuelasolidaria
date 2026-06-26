@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
+import ExpandableText from "./ExpandableText";
 
 export default function ListItem({ item }: { item: Resource }) {
   const [copied, setCopied] = useState(false);
@@ -63,7 +64,7 @@ export default function ListItem({ item }: { item: Resource }) {
           {meta && <span className="dir-meta">{meta}</span>}
         </div>
         <h3>{item.title}</h3>
-        {item.desc && <p className="dir-desc">{item.desc}</p>}
+        {item.desc && <ExpandableText text={item.desc} lines={2} className="dir-desc" />}
       </div>
       <div className="dir-row-actions">
         {(item.url || item.phone) && (

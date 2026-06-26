@@ -7,13 +7,14 @@ import { CATS, CAT_ORDER, THEME_LABELS, THEME_ORDER } from "../lib/constants";
 import { fetchResources } from "../lib/api";
 import { useEventStream } from "../lib/useEventStream";
 import { isIsoDate } from "../lib/format";
+import { Timeframe, TIMEFRAMES, timeframeRange } from "../lib/timeframes";
 import Card from "./Card";
 import ListItem from "./ListItem";
 import AddModal from "./AddModal";
 import Pagination from "./Pagination";
 
 const THEME_KEY = "vzla-dir-theme";
-const PAGE_SIZE = 9;
+const PAGE_SIZES = [10, 50, 100];
 
 // Leaflet needs `window`, so the map is client-only.
 const MapView = dynamic(() => import("./MapView"), {
@@ -30,9 +31,11 @@ export default function Directory() {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<CategoryKey | "todos">("todos");
   const [pais, setPais] = useState("todos");
+  const [timeframe, setTimeframe] = useState<Timeframe>("semana");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   const [view, setView] = useState<"tarjetas" | "lista" | "mapa">("tarjetas");
   const [showAdd, setShowAdd] = useState(false);
 
@@ -99,7 +102,8 @@ export default function Directory() {
     return { countries, counts: c };
   }, [resources, cat]);
 
-  const dateActive = !!(desde || hasta);
+  const [fDesde, fHasta] = timeframe === "rango" ? [desde, hasta] : timeframeRange(timeframe);
+  const dateActive = !!(fDesde || fHasta);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -109,12 +113,13 @@ export default function Directory() {
         (pais === "todos" || r.country === pais) &&
         (!q ||
           `${r.title} ${r.desc} ${r.city || ""} ${r.country || ""}`.toLowerCase().includes(q)) &&
-        (!dateActive || matchesDateRange(r, desde, hasta))
+        // The date filter only narrows dated events; undated resources always show.
+        (!dateActive || !isIsoDate(r.date) || matchesDateRange(r, fDesde, fHasta))
     );
-  }, [resources, query, cat, pais, desde, hasta, dateActive]);
+  }, [resources, query, cat, pais, fDesde, fHasta, dateActive]);
 
-  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
-  const pageItems = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+  const pageItems = list.slice((page - 1) * pageSize, page * pageSize);
   const locatedCount = list.filter(
     (i) => typeof i.lat === "number" && typeof i.lng === "number"
   ).length;
@@ -122,7 +127,7 @@ export default function Directory() {
   // Back to page 1 whenever the filters change.
   useEffect(() => {
     setPage(1);
-  }, [query, cat, pais, desde, hasta]);
+  }, [query, cat, pais, timeframe, desde, hasta, pageSize]);
 
   // Keep the page in range after live (SSE) updates shrink the list.
   useEffect(() => {
@@ -249,31 +254,34 @@ export default function Directory() {
 
         <div className="datefilter">
           <span className="lbl">Fecha:</span>
-          <input
-            type="date"
-            aria-label="Desde"
-            value={desde}
-            max={hasta || undefined}
-            onChange={(e) => setDesde(e.target.value)}
-          />
-          <span className="sep">–</span>
-          <input
-            type="date"
-            aria-label="Hasta"
-            value={hasta}
-            min={desde || undefined}
-            onChange={(e) => setHasta(e.target.value)}
-          />
-          {dateActive && (
+          {TIMEFRAMES.map((tf) => (
             <button
-              className="clear"
-              onClick={() => {
-                setDesde("");
-                setHasta("");
-              }}
+              key={tf.key}
+              className="chip"
+              style={chipStyle(timeframe === tf.key, "var(--brand)")}
+              onClick={() => setTimeframe(tf.key)}
             >
-              Limpiar
+              {tf.label}
             </button>
+          ))}
+          {timeframe === "rango" && (
+            <span className="daterange">
+              <input
+                type="date"
+                aria-label="Desde"
+                value={desde}
+                max={hasta || undefined}
+                onChange={(e) => setDesde(e.target.value)}
+              />
+              <span className="sep">–</span>
+              <input
+                type="date"
+                aria-label="Hasta"
+                value={hasta}
+                min={desde || undefined}
+                onChange={(e) => setHasta(e.target.value)}
+              />
+            </span>
           )}
         </div>
 
@@ -285,7 +293,20 @@ export default function Directory() {
             <span className="dot">·</span>
             <span>Verifica siempre antes de donar. La marca ✓ significa revisado por el equipo.</span>
           </div>
-          <div className="viewtoggle">
+          <div className="statbar-controls">
+            {view !== "mapa" && (
+              <label className="pagesize">
+                Mostrar
+                <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                  {PAGE_SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <div className="viewtoggle">
             <button
               className={view === "tarjetas" ? "active" : ""}
               onClick={() => setView("tarjetas")}
@@ -304,6 +325,7 @@ export default function Directory() {
             >
               ◎ Mapa
             </button>
+            </div>
           </div>
         </div>
       </section>
