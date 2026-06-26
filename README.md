@@ -102,6 +102,28 @@ El panel de moderación vive en **`http://localhost:3000/admin`** (no enlazado d
 La autenticación usa **JWT** (`Authorization: Bearer`), no cookies, para funcionar entre dominios
 cuando frontend y backend se despliegan por separado.
 
+## Imágenes (Cloudinary)
+
+La subida de imágenes usa **Cloudinary con un unsigned upload preset**: el navegador sube el
+archivo directo a Cloudinary y la app solo guarda la `secure_url`. Ningún secreto vive en el repo
+ni en el bundle.
+
+Configuración (una vez):
+1. Crea cuenta en Cloudinary → anota el **Cloud name**.
+2. Settings → Upload → **Add upload preset** con **Signing Mode: Unsigned**. Endurécelo: límite de
+   tamaño (~3 MB), formatos solo `jpg/png`, y una carpeta. (Opcional: moderación automática.)
+3. Pon estas variables públicas en `frontend/.env.local` y en Vercel:
+   - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+   - `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`
+
+El control acepta **arrastrar, pegar (Ctrl/Cmd+V) o elegir archivo**; valida JPG/PNG y ≤ 3 MB en el
+cliente. El backend solo valida que la imagen sea un enlace `http(s)` y la sirve como `<img>`; la
+publicación sigue pasando por moderación. (Endurecimiento futuro: subida **firmada** con
+`CLOUDINARY_API_SECRET` en un endpoint del backend.)
+
+> **Esquema:** la columna `image_url` se crea sola en una BD nueva. En una BD existente, una vez:
+> `ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url varchar(2048);`
+
 ## Tiempo real (SSE)
 
 La home y el panel admin se actualizan **en vivo** sin recargar, vía Server-Sent Events:
@@ -148,6 +170,8 @@ El backend incluye varias capas (configurables por entorno, ver `backend/.env.ex
   intervalo se solapa con el rango buscado)
 - Campo de **fecha con selector** en el formulario: **inicio** y **fin (opcional)**. Se guardan en
   ISO (`YYYY-MM-DD`) y se muestran en formato corto en español (p. ej. "sáb 28 jun – dom 29 jun")
+- **Imagen opcional** por registro (subida a Cloudinary): arrastrar, pegar (Ctrl/Cmd+V) o elegir
+  archivo; solo JPG/PNG, máx. 3 MB. Se muestra como portada en la tarjeta
 - Tarjetas con badge de verificación, acción principal (donar/visitar/llamar) y copiar al portapapeles
 - Tres temas visuales (Esperanza, Sereno, Tricolor) con persistencia en `localStorage`
 - Formulario "Agregar al directorio" con validación, detección de duplicados en el servidor y

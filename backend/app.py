@@ -34,6 +34,14 @@ def valid_iso_date(value):
     return bool(ISO_DATE_RE.match(value.strip()))
 
 
+def valid_image_url(value):
+    """Empty is fine; otherwise an http(s) URL no longer than the column allows."""
+    if not value:
+        return True
+    value = value.strip()
+    return len(value) <= 2048 and bool(re.match(r"^https?://", value, re.IGNORECASE))
+
+
 def valid_date_range(start, end):
     """End is optional; when both are ISO dates, end must be >= start."""
     start = (start or "").strip()
@@ -241,6 +249,8 @@ def create_app():
             return jsonify({"error": "Fecha no válida."}), 400
         if not valid_date_range(data.get("date"), data.get("dateEnd")):
             return jsonify({"error": "La fecha de fin no puede ser anterior a la de inicio."}), 400
+        if not valid_image_url(data.get("image")):
+            return jsonify({"error": "La imagen debe ser un enlace http(s) válido."}), 400
 
         looks_like_phone = bool(re.match(r"^[\d\s()+\-]+$", raw_url)) and not raw_url.lower().startswith("http")
         url = None if looks_like_phone else raw_url
@@ -269,6 +279,7 @@ def create_app():
             country=(data.get("country") or "").strip() or None,
             event_date=(data.get("date") or "").strip() or None,
             event_end_date=(data.get("dateEnd") or "").strip() or None,
+            image_url=(data.get("image") or "").strip() or None,
             contact=(data.get("contact") or "").strip() or None,
             verified=False,
             status="pending",
@@ -362,6 +373,8 @@ def create_app():
         new_end = data["dateEnd"] if "dateEnd" in data else entry.event_end_date
         if not valid_date_range(new_start, new_end):
             return jsonify({"error": "La fecha de fin no puede ser anterior a la de inicio."}), 400
+        if "image" in data and not valid_image_url(data.get("image")):
+            return jsonify({"error": "La imagen debe ser un enlace http(s) válido."}), 400
         field_map = {
             "title": "title",
             "desc": "description",
@@ -371,6 +384,7 @@ def create_app():
             "country": "country",
             "date": "event_date",
             "dateEnd": "event_end_date",
+            "image": "image_url",
             "contact": "contact",
         }
         for key, attr in field_map.items():

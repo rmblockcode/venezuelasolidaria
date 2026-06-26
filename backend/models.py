@@ -24,6 +24,7 @@ class Resource(db.Model):
     country = db.Column(db.String(120))
     event_date = db.Column(db.String(60))
     event_end_date = db.Column(db.String(60))
+    image_url = db.Column(db.String(2048))
     verified = db.Column(db.Boolean, nullable=False, default=False)
     status = db.Column(db.String(20), nullable=False, default="published", index=True)
     contact = db.Column(db.String(280))
@@ -44,6 +45,7 @@ class Resource(db.Model):
             "country": self.country,
             "date": self.event_date,
             "dateEnd": self.event_end_date,
+            "image": self.image_url,
             "verified": self.verified,
             "status": self.status,
         }

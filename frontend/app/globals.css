@@ -93,6 +93,7 @@ section.grid-sec{padding:24px 24px 72px}
 
 .card{display:flex;flex-direction:column;gap:11px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;transition:transform .15s ease,box-shadow .15s ease}
 .card:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(20,20,20,.10)}
+.card-cover{width:calc(100% + 40px);margin:-20px -20px 1px;height:160px;object-fit:cover;border-radius:16px 16px 0 0;background:var(--surface-2)}
 .card .toprow{display:flex;align-items:center;gap:8px}
 .tag{display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-weight:700;font-size:11.5px;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:var(--cat);background:color-mix(in srgb,var(--cat) 14%,var(--surface))}
 .verified{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:11.5px;line-height:1;color:#2f8a6b}
@@ -130,6 +131,22 @@ footer.site a{color:var(--brand);font-weight:600}
 .modal textarea{resize:vertical;line-height:1.5}
 .modal input:focus,.modal textarea:focus{border-color:var(--brand)}
 .modal .threecol{display:flex;gap:12px;flex-wrap:wrap}
+
+/* image upload control */
+.img-upload{margin-bottom:14px}
+.img-drop{border:1.5px dashed var(--line);border-radius:12px;background:var(--surface-2);padding:18px 14px;text-align:center;cursor:pointer;transition:border-color .12s ease,background .12s ease;font-size:13px;color:var(--muted)}
+.img-drop:hover{border-color:var(--brand)}
+.img-drop.dragging{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 8%,var(--surface))}
+.img-drop u{color:var(--brand);text-underline-offset:2px}
+.img-drop small{display:block;margin-top:5px;font-size:11.5px;color:var(--muted);opacity:.85}
+.img-upload.has-image{display:flex;align-items:center;gap:12px}
+.img-preview{width:84px;height:84px;object-fit:cover;border-radius:11px;border:1px solid var(--line);background:var(--surface-2)}
+.img-actions{display:flex;gap:8px}
+.img-actions button{padding:8px 13px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 12.5px/1 'Hanken Grotesk';cursor:pointer}
+.img-actions button:hover{background:var(--surface-2)}
+.img-actions button.danger{color:#a8331f}
+.img-actions button:disabled{opacity:.55;cursor:default}
+.img-error{margin-top:8px;font-size:12.5px;font-weight:600;color:#a8331f}
 .modal .threecol>div{flex:1;min-width:140px}
 .modal .err{background:color-mix(in srgb,#cf3a2e 10%,var(--surface));border:1px solid color-mix(in srgb,#cf3a2e 30%,var(--surface));color:#a8331f;font-size:13px;font-weight:600;padding:10px 13px;border-radius:11px;margin-bottom:14px}
 .modal .foot{display:flex;gap:10px;justify-content:flex-end;align-items:center}
@@ -176,6 +193,7 @@ footer.site a{color:var(--brand);font-weight:600}
 
 .admin-list{display:flex;flex-direction:column;gap:14px}
 .admin-row{display:flex;gap:18px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--cat);border-radius:14px;padding:18px 20px}
+.admin-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line);background:var(--surface-2);flex-shrink:0}
 .admin-row-main{flex:1;min-width:260px}
 .admin-row-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .admin-row .admin-meta{font-size:12px;color:var(--muted);font-weight:600}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CategoryKey, SubmissionForm } from "../lib/types";
 import { CATS, CAT_ORDER } from "../lib/constants";
 import { submitResource } from "../lib/api";
+import ImageUpload from "./ImageUpload";
 
 const EMPTY: SubmissionForm = {
   category: "donaciones",
@@ -14,6 +15,7 @@ const EMPTY: SubmissionForm = {
   country: "",
   date: "",
   dateEnd: "",
+  image: "",
   contact: "",
 };
 
@@ -170,6 +172,9 @@ export default function AddModal({
                 />
               </div>
             </div>
+
+            <label>Imagen (opcional)</label>
+            <ImageUpload value={form.image} onChange={(url) => update("image", url)} />
 
             <label>Tu correo o contacto (opcional, para verificar)</label>
             <input

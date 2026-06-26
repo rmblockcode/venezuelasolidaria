@@ -12,6 +12,7 @@ export interface Resource {
   country?: string | null;
   date?: string | null;
   dateEnd?: string | null;
+  image?: string | null;
   verified: boolean;
   status?: string;
 }
@@ -25,5 +26,6 @@ export interface SubmissionForm {
   country: string;
   date: string;
   dateEnd: string;
+  image: string;
   contact: string;
 }

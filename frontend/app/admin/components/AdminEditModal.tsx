@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CategoryKey } from "../../lib/types";
 import { CATS, CAT_ORDER } from "../../lib/constants";
 import { AdminResource, patchSubmission, UnauthorizedError } from "../../lib/adminApi";
+import ImageUpload from "../../components/ImageUpload";
 
 export default function AdminEditModal({
   item,
@@ -25,6 +26,7 @@ export default function AdminEditModal({
   const [country, setCountry] = useState(item.country ?? "");
   const [date, setDate] = useState(item.date ?? "");
   const [dateEnd, setDateEnd] = useState(item.dateEnd ?? "");
+  const [image, setImage] = useState(item.image ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -52,6 +54,7 @@ export default function AdminEditModal({
         country,
         date,
         dateEnd,
+        image,
       });
       onSaved(updated);
     } catch (e) {
@@ -143,6 +146,9 @@ export default function AdminEditModal({
             />
           </div>
         </div>
+
+        <label>Imagen (opcional)</label>
+        <ImageUpload value={image} onChange={setImage} />
 
         {error && <div className="err">{error}</div>}
 

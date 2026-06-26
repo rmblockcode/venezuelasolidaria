@@ -30,6 +30,10 @@ export default function Card({ item }: { item: Resource }) {
 
   return (
     <div className="card" style={{ "--cat": c.color } as React.CSSProperties}>
+      {item.image && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.image} alt="" className="card-cover" loading="lazy" />
+      )}
       <div className="toprow">
         <span className="tag">{c.label}</span>
         <div style={{ flex: 1 }} />

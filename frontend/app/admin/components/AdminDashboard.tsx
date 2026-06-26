@@ -162,6 +162,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               className="admin-row"
               style={{ "--cat": c.color } as React.CSSProperties}
             >
+              {item.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={item.image} alt="" className="admin-thumb" loading="lazy" />
+              )}
               <div className="admin-row-main">
                 <div className="admin-row-top">
                   <span className="tag">{c.label}</span>
