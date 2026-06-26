@@ -229,7 +229,8 @@ footer.site a{color:var(--brand);font-weight:600}
 .legal a{color:var(--brand);font-weight:600}
 .legal strong{font-weight:700}
 .legal .legal-updated{font-size:13px;color:var(--muted);margin-top:24px}
-.legal-back-btn{display:inline-flex;align-items:center;gap:6px;margin-top:18px;padding:11px 18px;border-radius:11px;background:var(--brand);color:#fff;font:700 14px/1 'Hanken Grotesk';text-decoration:none}
+.legal a.legal-back-btn{display:inline-flex;align-items:center;gap:6px;margin-top:18px;padding:11px 18px;border-radius:11px;background:var(--brand);color:#fff;font:700 14px/1 'Hanken Grotesk';text-decoration:none}
+.legal a.legal-back-btn:hover{filter:brightness(1.06)}
 
 /* modal */
 .overlay{position:fixed;inset:0;z-index:60;background:rgba(28,24,18,.5);display:flex;align-items:flex-start;justify-content:center;padding:32px 18px;overflow:auto;animation:vzOverlay .18s ease both}
