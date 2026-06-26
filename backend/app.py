@@ -14,6 +14,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -70,6 +71,19 @@ def seed_if_empty():
         return
     for row in SEED:
         db.session.add(Resource(status="published", **row))
+    db.session.commit()
+
+
+def ensure_schema():
+    """Lightweight idempotent migration: add columns that were introduced after a
+    table may already have been created. `db.create_all()` never alters existing
+    tables, so without this a redeploy keeps the old schema. Postgres-only syntax."""
+    stmts = [
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS event_end_date varchar(60)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url varchar(2048)",
+    ]
+    for s in stmts:
+        db.session.execute(text(s))
     db.session.commit()
 
 
@@ -143,6 +157,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        ensure_schema()
         seed_if_empty()
         seed_admin()
 
