@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { CategoryKey, Resource, ThemeKey } from "../lib/types";
 import { CATS, CAT_ORDER, THEME_LABELS, THEME_ORDER } from "../lib/constants";
 import { fetchResources } from "../lib/api";
@@ -401,6 +402,10 @@ export default function Directory() {
               campaña sea real y que no esté duplicada.
             </p>
           </div>
+        </div>
+        <div className="wrap footer-bottom">
+          <span>© 2026 Venezuela Solidaria · Ayuda humanitaria, sin fines de lucro.</span>
+          <Link href="/privacidad">Política de privacidad</Link>
         </div>
       </footer>
 
