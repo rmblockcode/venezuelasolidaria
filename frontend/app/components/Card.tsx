@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
 
 export default function Card({ item }: { item: Resource }) {
   const [copied, setCopied] = useState(false);
+  const [zoom, setZoom] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!zoom) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setZoom(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [zoom]);
 
   const c = CATS[item.category];
   const isPhone = item.category === "emergencia";
@@ -32,7 +42,14 @@ export default function Card({ item }: { item: Resource }) {
     <div className="card" style={{ "--cat": c.color } as React.CSSProperties}>
       {item.image && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.image} alt="" className="card-cover" loading="lazy" />
+        <img
+          src={item.image}
+          alt={item.title}
+          className="card-cover"
+          loading="lazy"
+          onClick={() => setZoom(true)}
+          title="Ampliar imagen"
+        />
       )}
       <div className="toprow">
         <span className="tag">{c.label}</span>
@@ -63,6 +80,16 @@ export default function Card({ item }: { item: Resource }) {
           </button>
         )}
       </div>
+
+      {zoom && item.image && (
+        <div className="lightbox" onClick={() => setZoom(false)}>
+          <button className="lightbox-close" aria-label="Cerrar" onClick={() => setZoom(false)}>
+            ×
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={item.image} alt={item.title} onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

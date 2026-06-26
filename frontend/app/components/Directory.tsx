@@ -76,16 +76,19 @@ export default function Directory() {
 
   const verifiedCount = useMemo(() => resources.filter((r) => r.verified).length, [resources]);
 
+  // Country filter, available across all categories — built from whatever
+  // countries exist in the currently selected category.
   const countryChips = useMemo(() => {
-    const items = resources.filter((r) => r.category === "quedadas");
+    const items = resources.filter((r) => cat === "todos" || r.category === cat);
     const countries: string[] = [];
     items.forEach((r) => {
       if (r.country && !countries.includes(r.country)) countries.push(r.country);
     });
+    countries.sort((a, b) => a.localeCompare(b, "es"));
     const c: Record<string, number> = { todos: items.length };
     countries.forEach((co) => (c[co] = items.filter((r) => r.country === co).length));
     return { countries, counts: c };
-  }, [resources]);
+  }, [resources, cat]);
 
   const dateActive = !!(desde || hasta);
 
@@ -94,7 +97,7 @@ export default function Directory() {
     return resources.filter(
       (r) =>
         (cat === "todos" || r.category === cat) &&
-        (cat !== "quedadas" || pais === "todos" || r.country === pais) &&
+        (pais === "todos" || r.country === pais) &&
         (!q ||
           `${r.title} ${r.desc} ${r.city || ""} ${r.country || ""}`.toLowerCase().includes(q)) &&
         (!dateActive || matchesDateRange(r, desde, hasta))
@@ -209,12 +212,12 @@ export default function Directory() {
           ))}
         </div>
 
-        {cat === "quedadas" && (
+        {countryChips.countries.length > 0 && (
           <div className="countryrow">
             <span className="lbl">Por país:</span>
             <button
               className="chip"
-              style={chipStyle(pais === "todos", "#2f8a6b")}
+              style={chipStyle(pais === "todos", "var(--brand)")}
               onClick={() => setPais("todos")}
             >
               Todos los países ({countryChips.counts.todos || 0})
@@ -223,7 +226,7 @@ export default function Directory() {
               <button
                 key={co}
                 className="chip"
-                style={chipStyle(pais === co, "#2f8a6b")}
+                style={chipStyle(pais === co, "var(--brand)")}
                 onClick={() => setPais(co)}
               >
                 {co} ({countryChips.counts[co] || 0})

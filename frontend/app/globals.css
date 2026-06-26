@@ -112,7 +112,14 @@ section.grid-sec{padding:24px 24px 72px}
 
 .card{display:flex;flex-direction:column;gap:11px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;transition:transform .15s ease,box-shadow .15s ease}
 .card:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(20,20,20,.10)}
-.card-cover{width:calc(100% + 40px);margin:-20px -20px 1px;height:160px;object-fit:cover;border-radius:16px 16px 0 0;background:var(--surface-2)}
+.card-cover{width:calc(100% + 40px);margin:-20px -20px 1px;height:160px;object-fit:cover;border-radius:16px 16px 0 0;background:var(--surface-2);cursor:zoom-in;transition:filter .12s ease}
+.card-cover:hover{filter:brightness(.95)}
+
+/* image lightbox */
+.lightbox{position:fixed;inset:0;z-index:80;background:rgba(15,12,8,.86);display:flex;align-items:center;justify-content:center;padding:28px;animation:vzOverlay .18s ease both;cursor:zoom-out}
+.lightbox img{max-width:min(96vw,1100px);max-height:92vh;object-fit:contain;border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.5);cursor:default}
+.lightbox-close{position:fixed;top:16px;right:20px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lightbox-close:hover{background:rgba(255,255,255,.25)}
 .card .toprow{display:flex;align-items:center;gap:8px}
 .tag{display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-weight:700;font-size:11.5px;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:var(--cat);background:color-mix(in srgb,var(--cat) 14%,var(--surface))}
 .verified{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:11.5px;line-height:1;color:#2f8a6b}
