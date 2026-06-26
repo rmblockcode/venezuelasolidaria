@@ -114,6 +114,13 @@ def create_app():
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = resolve_db_url()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    # Managed/serverless Postgres (Neon) drops idle connections; validate each
+    # pooled connection before use and recycle stale ones so requests don't hit
+    # "SSL connection has been closed unexpectedly".
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-insecure-change-me")
     app.config["JWT_EXP_HOURS"] = int(os.environ.get("JWT_EXP_HOURS", "12"))
     # Reject oversized request bodies outright (anti-abuse). Default 64 KB.
