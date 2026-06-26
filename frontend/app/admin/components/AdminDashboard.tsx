@@ -19,6 +19,7 @@ import AdminEditModal from "./AdminEditModal";
 import AdminUsers from "./AdminUsers";
 import AdminPassword from "./AdminPassword";
 import AdminActivity from "./AdminActivity";
+import AdminGeocode from "./AdminGeocode";
 import Pagination from "../../components/Pagination";
 
 type ResourceTab = "pending" | "published";
@@ -215,6 +216,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               <h2>Cambiar mi contraseña</h2>
             </div>
             <AdminPassword />
+          </section>
+          <section>
+            <div className="admin-section-head">
+              <h2>Ubicaciones del mapa</h2>
+            </div>
+            <AdminGeocode onLogout={onLogout} />
           </section>
           <AdminActivity onLogout={onLogout} />
         </div>

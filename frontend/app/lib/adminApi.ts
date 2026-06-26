@@ -136,6 +136,16 @@ export async function changePassword(
   return { ok: true };
 }
 
+export async function geocodeMissing(): Promise<{ updated: number; scanned: number }> {
+  const res = await authFetch(`/api/admin/geocode-missing`, { method: "POST" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "No se pudo rellenar las ubicaciones.");
+  }
+  const data = await res.json();
+  return { updated: data.updated ?? 0, scanned: data.scanned ?? 0 };
+}
+
 export interface ActivityEntry {
   id: number;
   admin: string | null;
