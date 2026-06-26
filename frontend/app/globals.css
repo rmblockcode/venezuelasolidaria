@@ -67,6 +67,10 @@ header.site .inner{padding:12px 24px;display:flex;align-items:center;gap:16px}
   section.hero{padding:32px 16px 8px}
   section.grid-sec{padding:20px 16px 96px}
   footer.site .inner{padding:28px 16px}
+  /* stack form pairs (city/country, start/end dates) so they don't crowd */
+  .overlay{padding:18px 12px}
+  .modal{padding:22px 18px}
+  .modal .threecol{flex-direction:column;gap:0}
 }
 
 /* hero */
