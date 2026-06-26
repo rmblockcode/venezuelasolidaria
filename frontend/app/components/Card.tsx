@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
@@ -81,15 +82,18 @@ export default function Card({ item }: { item: Resource }) {
         )}
       </div>
 
-      {zoom && item.image && (
-        <div className="lightbox" onClick={() => setZoom(false)}>
-          <button className="lightbox-close" aria-label="Cerrar" onClick={() => setZoom(false)}>
-            ×
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={item.image} alt={item.title} onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
+      {zoom &&
+        item.image &&
+        createPortal(
+          <div className="lightbox" onClick={() => setZoom(false)}>
+            <button className="lightbox-close" aria-label="Cerrar" onClick={() => setZoom(false)}>
+              ×
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.image} alt={item.title} onClick={(e) => e.stopPropagation()} />
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
