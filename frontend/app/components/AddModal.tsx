@@ -143,7 +143,7 @@ export default function AddModal({
                 />
               </div>
               <div>
-                <label>País (quedadas)</label>
+                <label>País (acopios)</label>
                 <input
                   value={form.country}
                   onChange={(e) => update("country", e.target.value)}

@@ -17,6 +17,8 @@ import { useEventStream } from "../../lib/useEventStream";
 import { formatEventRange } from "../../lib/format";
 import AdminEditModal from "./AdminEditModal";
 import AdminUsers from "./AdminUsers";
+import AdminPassword from "./AdminPassword";
+import AdminActivity from "./AdminActivity";
 import Pagination from "../../components/Pagination";
 
 type ResourceTab = "pending" | "published";
@@ -200,7 +202,23 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         </button>
       </div>
 
-      {tab === "admins" && <AdminUsers onLogout={onLogout} />}
+      {tab === "admins" && (
+        <div className="admin-sections">
+          <section>
+            <div className="admin-section-head">
+              <h2>Administradores</h2>
+            </div>
+            <AdminUsers onLogout={onLogout} />
+          </section>
+          <section>
+            <div className="admin-section-head">
+              <h2>Cambiar mi contraseña</h2>
+            </div>
+            <AdminPassword />
+          </section>
+          <AdminActivity onLogout={onLogout} />
+        </div>
+      )}
 
       {tab !== "admins" && (
       <>

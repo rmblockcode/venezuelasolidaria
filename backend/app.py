@@ -19,7 +19,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from events import broker
-from models import db, Resource, AdminUser
+from models import db, Resource, AdminUser, ModerationLog
 from seed_data import SEED
 
 load_dotenv()
@@ -42,6 +42,20 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def valid_email(value):
     return bool(EMAIL_RE.match((value or "").strip()))
+
+
+def record_log(action, entry):
+    """Queue an audit entry for a moderation action. Reads the resource's fields
+    now (so it works even right before a delete); the caller commits."""
+    db.session.add(
+        ModerationLog(
+            admin_email=getattr(g, "admin_email", None),
+            action=action,
+            target_id=entry.id,
+            target_title=entry.title,
+            target_category=entry.category,
+        )
+    )
 
 
 def valid_image_url(value):
@@ -386,6 +400,7 @@ def create_app():
         verified = data.get("verified", True)
         entry.status = "published"
         entry.verified = bool(verified)
+        record_log("approve", entry)
         db.session.commit()
         broker.publish({"scopes": ["pending", "published"]})
         return jsonify({"ok": True, "item": entry.to_admin_dict()})
@@ -397,6 +412,7 @@ def create_app():
         if not entry:
             return jsonify({"error": "No encontrado."}), 404
         scope = "published" if entry.status == "published" else "pending"
+        record_log("reject", entry)
         db.session.delete(entry)
         db.session.commit()
         broker.publish({"scopes": [scope]})
@@ -410,6 +426,7 @@ def create_app():
         if not entry:
             return jsonify({"error": "No encontrado."}), 404
         entry.status = "pending"
+        record_log("unpublish", entry)
         db.session.commit()
         broker.publish({"scopes": ["pending", "published"]})
         return jsonify({"ok": True, "item": entry.to_admin_dict()})
@@ -505,6 +522,32 @@ def create_app():
         db.session.delete(admin)
         db.session.commit()
         return jsonify({"ok": True})
+
+    @app.post("/api/admin/change-password")
+    @require_admin
+    @limiter.limit("10 per minute")
+    def change_password():
+        data = request.get_json(silent=True) or {}
+        current = data.get("current_password") or ""
+        new = data.get("new_password") or ""
+        user = AdminUser.query.filter_by(email=g.admin_email).first()
+        if not user:
+            return jsonify({"error": "Sesión inválida."}), 401
+        if not check_password_hash(user.password_hash, current):
+            return jsonify({"error": "La contraseña actual es incorrecta."}), 400
+        if len(new) < 8:
+            return jsonify({"error": "La nueva contraseña debe tener al menos 8 caracteres."}), 400
+        user.password_hash = generate_password_hash(new)
+        db.session.commit()
+        return jsonify({"ok": True})
+
+    @app.get("/api/admin/activity")
+    @require_admin
+    def admin_activity():
+        logs = (
+            ModerationLog.query.order_by(ModerationLog.created_at.desc()).limit(100).all()
+        )
+        return jsonify({"items": [l.to_dict() for l in logs]})
 
     return app
 

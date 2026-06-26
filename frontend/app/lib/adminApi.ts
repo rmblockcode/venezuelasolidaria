@@ -122,6 +122,36 @@ export async function deleteAdmin(id: number): Promise<void> {
   }
 }
 
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await authFetch(`/api/admin/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data.error || "No se pudo cambiar la contraseña." };
+  return { ok: true };
+}
+
+export interface ActivityEntry {
+  id: number;
+  admin: string | null;
+  action: "approve" | "reject" | "unpublish" | string;
+  title: string | null;
+  category: string | null;
+  created_at: string | null;
+}
+
+export async function fetchActivity(): Promise<ActivityEntry[]> {
+  const res = await authFetch(`/api/admin/activity`);
+  if (!res.ok) throw new Error("No se pudo cargar la actividad.");
+  const data = await res.json();
+  return data.items as ActivityEntry[];
+}
+
 export async function unpublish(id: string): Promise<void> {
   const res = await authFetch(`/api/admin/submissions/${id}/unpublish`, { method: "POST" });
   if (!res.ok) throw new Error("No se pudo despublicar.");

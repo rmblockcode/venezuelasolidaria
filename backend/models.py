@@ -67,3 +67,28 @@ class AdminUser(db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class ModerationLog(db.Model):
+    """Audit trail: which admin moderated what, and when. Title/category are
+    denormalized so the entry survives even if the resource is later deleted."""
+
+    __tablename__ = "moderation_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    admin_email = db.Column(db.String(255))
+    action = db.Column(db.String(20), nullable=False)  # approve | reject | unpublish
+    target_id = db.Column(db.String(64))
+    target_title = db.Column(db.String(280))
+    target_category = db.Column(db.String(32))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "admin": self.admin_email,
+            "action": self.action,
+            "title": self.target_title,
+            "category": self.target_category,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
