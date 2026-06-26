@@ -5,6 +5,7 @@ import { CategoryKey } from "../../lib/types";
 import { CATS, CAT_ORDER } from "../../lib/constants";
 import { AdminResource, patchSubmission, UnauthorizedError } from "../../lib/adminApi";
 import ImageUpload from "../../components/ImageUpload";
+import LocationAutocomplete from "../../components/LocationAutocomplete";
 
 export default function AdminEditModal({
   item,
@@ -24,6 +25,8 @@ export default function AdminEditModal({
   const [desc, setDesc] = useState(item.desc ?? "");
   const [city, setCity] = useState(item.city ?? "");
   const [country, setCountry] = useState(item.country ?? "");
+  const [lat, setLat] = useState<number | null>(item.lat ?? null);
+  const [lng, setLng] = useState<number | null>(item.lng ?? null);
   const [date, setDate] = useState(item.date ?? "");
   const [dateEnd, setDateEnd] = useState(item.dateEnd ?? "");
   const [image, setImage] = useState(item.image ?? "");
@@ -52,6 +55,8 @@ export default function AdminEditModal({
         desc,
         city,
         country,
+        lat,
+        lng,
         date,
         dateEnd,
         image,
@@ -115,16 +120,22 @@ export default function AdminEditModal({
         <label>Descripción</label>
         <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2} />
 
-        <div className="threecol">
-          <div>
-            <label>Ciudad</label>
-            <input value={city} onChange={(e) => setCity(e.target.value)} />
-          </div>
-          <div>
-            <label>País</label>
-            <input value={country} onChange={(e) => setCountry(e.target.value)} />
-          </div>
-        </div>
+        <label>Ubicación (ciudad / país)</label>
+        <LocationAutocomplete
+          initial={[city, country].filter(Boolean).join(", ")}
+          onSelect={(p) => {
+            setCity(p.city);
+            setCountry(p.country);
+            setLat(p.lat);
+            setLng(p.lng);
+          }}
+          onClear={() => {
+            setCity("");
+            setCountry("");
+            setLat(null);
+            setLng(null);
+          }}
+        />
 
         <div className="threecol">
           <div>

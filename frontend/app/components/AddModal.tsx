@@ -5,6 +5,7 @@ import { CategoryKey, SubmissionForm } from "../lib/types";
 import { CATS, CAT_ORDER } from "../lib/constants";
 import { submitResource } from "../lib/api";
 import ImageUpload from "./ImageUpload";
+import LocationAutocomplete from "./LocationAutocomplete";
 
 const EMPTY: SubmissionForm = {
   category: "donaciones",
@@ -13,6 +14,8 @@ const EMPTY: SubmissionForm = {
   desc: "",
   city: "",
   country: "",
+  lat: null,
+  lng: null,
   date: "",
   dateEnd: "",
   image: "",
@@ -133,24 +136,21 @@ export default function AddModal({
               rows={2}
             />
 
-            <div className="threecol">
-              <div>
-                <label>Ciudad (opcional)</label>
-                <input
-                  value={form.city}
-                  onChange={(e) => update("city", e.target.value)}
-                  placeholder="Caracas, Miami…"
-                />
-              </div>
-              <div>
-                <label>País (acopios)</label>
-                <input
-                  value={form.country}
-                  onChange={(e) => update("country", e.target.value)}
-                  placeholder="Venezuela, España…"
-                />
-              </div>
-            </div>
+            <label>Ubicación (ciudad / país)</label>
+            <LocationAutocomplete
+              onSelect={(p) =>
+                setForm((f) => ({
+                  ...f,
+                  city: p.city,
+                  country: p.country,
+                  lat: p.lat,
+                  lng: p.lng,
+                }))
+              }
+              onClear={() =>
+                setForm((f) => ({ ...f, city: "", country: "", lat: null, lng: null }))
+              }
+            />
 
             <div className="threecol">
               <div>

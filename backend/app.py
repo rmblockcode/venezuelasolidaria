@@ -59,6 +59,18 @@ def record_log(action, entry):
     )
 
 
+def valid_coords(lat, lng):
+    """Return (lat, lng) as floats if both are valid map coordinates, else None."""
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        return None
+    if -90 <= lat <= 90 and -180 <= lng <= 180:
+        return (lat, lng)
+    return None
+
+
 def valid_image_url(value):
     """Empty is fine; otherwise an http(s) URL no longer than the column allows."""
     if not value:
@@ -334,9 +346,14 @@ def create_app():
             verified=False,
             status="pending",
         )
-        coords = geocode(entry.city, entry.country)
-        if coords:
-            entry.lat, entry.lng = coords
+        # Prefer exact coordinates from the location picker; otherwise geocode.
+        picked = valid_coords(data.get("lat"), data.get("lng"))
+        if picked:
+            entry.lat, entry.lng = picked
+        else:
+            coords = geocode(entry.city, entry.country)
+            if coords:
+                entry.lat, entry.lng = coords
         db.session.add(entry)
         db.session.commit()
         broker.publish({"scopes": ["pending"]})
@@ -478,7 +495,9 @@ def create_app():
             if key in data:
                 value = (data[key] or "").strip()
                 setattr(entry, attr, value or None)
-        if loc_changed:
+        if "lat" in data or "lng" in data:
+            entry.lat, entry.lng = valid_coords(data.get("lat"), data.get("lng")) or (None, None)
+        elif loc_changed:
             coords = geocode(entry.city, entry.country)
             entry.lat, entry.lng = coords if coords else (None, None)
         db.session.commit()

@@ -26,6 +26,8 @@ export interface SubmissionForm {
   desc: string;
   city: string;
   country: string;
+  lat: number | null;
+  lng: number | null;
   date: string;
   dateEnd: string;
   image: string;
