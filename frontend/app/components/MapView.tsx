@@ -68,8 +68,9 @@ export default function MapView({ items }: { items: Resource[] }) {
             const meta = [item.city, item.country, formatEventRange(item.date, item.dateEnd)]
               .filter(Boolean)
               .join(" · ");
-            const isPhone = item.category === "emergencia";
-            const href = isPhone && item.phone ? `tel:${item.phone}` : item.url || "#";
+            const isPhone = !item.url && !!item.phone;
+            const href = isPhone ? `tel:${item.phone}` : item.url || "#";
+            const actionLabel = isPhone ? "Llamar" : c.action;
             return (
               <Marker key={item.id} position={[item.lat, item.lng]} icon={pinIcon(c.color)}>
                 <Popup>
@@ -82,8 +83,13 @@ export default function MapView({ items }: { items: Resource[] }) {
                     <h4>{item.title}</h4>
                     {meta && <p className="map-pop-meta">{meta}</p>}
                     {(item.url || item.phone) && (
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="map-pop-btn">
-                        {c.action}
+                      <a
+                        href={href}
+                        target={isPhone ? undefined : "_blank"}
+                        rel="noopener noreferrer"
+                        className="map-pop-btn"
+                      >
+                        {actionLabel}
                       </a>
                     )}
                   </div>

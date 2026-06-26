@@ -126,6 +126,23 @@ export default function Directory() {
     (i) => typeof i.lat === "number" && typeof i.lng === "number"
   ).length;
 
+  const filtersActive =
+    cat !== "todos" ||
+    pais !== "todos" ||
+    timeframe !== "semana" ||
+    query.trim() !== "" ||
+    desde !== "" ||
+    hasta !== "";
+
+  function clearFilters() {
+    setCat("todos");
+    setPais("todos");
+    setTimeframe("semana");
+    setQuery("");
+    setDesde("");
+    setHasta("");
+  }
+
   // Back to page 1 whenever the filters change.
   useEffect(() => {
     setPage(1);
@@ -231,41 +248,36 @@ export default function Directory() {
           ))}
         </div>
 
-        {countryChips.countries.length > 0 && (
-          <div className="countryrow">
-            <span className="lbl">Por país:</span>
-            <button
-              className="chip"
-              style={chipStyle(pais === "todos", "var(--brand)")}
-              onClick={() => setPais("todos")}
-            >
-              Todos los países ({countryChips.counts.todos || 0})
-            </button>
-            {countryChips.countries.map((co) => (
-              <button
-                key={co}
-                className="chip"
-                style={chipStyle(pais === co, "var(--brand)")}
-                onClick={() => setPais(co)}
-              >
-                {co} ({countryChips.counts[co] || 0})
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="filterbar">
+          {countryChips.countries.length > 0 && (
+            <label className="filter-field">
+              <span className="lbl">País</span>
+              <select value={pais} onChange={(e) => setPais(e.target.value)}>
+                <option value="todos">Todos ({countryChips.counts.todos || 0})</option>
+                {countryChips.countries.map((co) => (
+                  <option key={co} value={co}>
+                    {co} ({countryChips.counts[co] || 0})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
-        <div className="datefilter">
-          <span className="lbl">Fecha:</span>
-          {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf.key}
-              className="chip"
-              style={chipStyle(timeframe === tf.key, "var(--brand)")}
-              onClick={() => setTimeframe(tf.key)}
-            >
-              {tf.label}
-            </button>
-          ))}
+          <div className="filter-field">
+            <span className="lbl">Fecha</span>
+            <div className="seg">
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf.key}
+                  className={timeframe === tf.key ? "active" : ""}
+                  onClick={() => setTimeframe(tf.key)}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {timeframe === "rango" && (
             <span className="daterange">
               <input
@@ -284,6 +296,12 @@ export default function Directory() {
                 onChange={(e) => setHasta(e.target.value)}
               />
             </span>
+          )}
+
+          {filtersActive && (
+            <button className="filter-clear" onClick={clearFilters}>
+              Limpiar filtros
+            </button>
           )}
         </div>
 

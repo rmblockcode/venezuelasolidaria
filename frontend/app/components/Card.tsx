@@ -22,12 +22,14 @@ export default function Card({ item }: { item: Resource }) {
   }, [zoom]);
 
   const c = CATS[item.category];
-  const isPhone = item.category === "emergencia";
+  // A phone-only entry (no URL) becomes a tel: link, regardless of category.
+  const isPhone = !item.url && !!item.phone;
   const copyValue = item.phone || item.url || "";
   const meta = [item.city, formatEventRange(item.date, item.dateEnd)]
     .filter(Boolean)
     .join("  ·  ");
-  const href = isPhone && item.phone ? `tel:${item.phone}` : item.url || "#";
+  const href = isPhone ? `tel:${item.phone}` : item.url || "#";
+  const actionLabel = isPhone ? "Llamar" : c.action;
 
   function onCopy() {
     try {
@@ -72,8 +74,13 @@ export default function Card({ item }: { item: Resource }) {
       )}
       <div className="actions">
         {(item.url || item.phone) && (
-          <a className="primary" href={href} target="_blank" rel="noopener noreferrer">
-            {c.action}
+          <a
+            className="primary"
+            href={href}
+            target={isPhone ? undefined : "_blank"}
+            rel="noopener noreferrer"
+          >
+            {actionLabel}
           </a>
         )}
         {copyValue && (

@@ -110,16 +110,21 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:999px;font-weight:700;font-size:13px;line-height:1;cursor:pointer;white-space:nowrap;transition:all .12s ease;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 
-.countryrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-.countryrow>.lbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
-.datefilter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
-.datefilter>.lbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
-.datefilter .daterange{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
-.datefilter .sep{color:var(--muted)}
-.datefilter input[type="date"]{padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:600 12.5px/1 'Hanken Grotesk';outline:none;cursor:pointer}
-.datefilter input[type="date"]:focus{border-color:var(--brand)}
-.datefilter .clear{padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);font:600 12.5px/1 'Hanken Grotesk';cursor:pointer}
-.datefilter .clear:hover{background:var(--surface-2)}
+/* compact filter bar (país + fecha) */
+.filterbar{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.filter-field{display:inline-flex;align-items:center;gap:8px}
+.filter-field>.lbl{font-size:12px;font-weight:700;color:var(--muted)}
+.filter-field select{padding:8px 30px 8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:700 12.5px/1 'Hanken Grotesk';outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23736d61' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
+.filter-field select:focus{border-color:var(--brand)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px;flex-wrap:wrap}
+.seg button{padding:7px 13px;border-radius:999px;border:none;background:transparent;color:var(--muted);font:700 12.5px/1 'Hanken Grotesk';cursor:pointer;transition:all .12s ease}
+.seg button.active{background:var(--brand);color:#fff}
+.daterange{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.daterange .sep{color:var(--muted)}
+.daterange input[type="date"]{padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:600 12.5px/1 'Hanken Grotesk';outline:none;cursor:pointer}
+.daterange input[type="date"]:focus{border-color:var(--brand)}
+.filter-clear{padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:#a8331f;font:700 12.5px/1 'Hanken Grotesk';cursor:pointer;transition:background .12s ease}
+.filter-clear:hover{background:color-mix(in srgb,#cf3a2e 8%,var(--surface))}
 
 .statbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:16px}
 .statline{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}

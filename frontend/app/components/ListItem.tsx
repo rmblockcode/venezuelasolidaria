@@ -13,12 +13,13 @@ export default function ListItem({ item }: { item: Resource }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const c = CATS[item.category];
-  const isPhone = item.category === "emergencia";
+  const isPhone = !item.url && !!item.phone;
   const copyValue = item.phone || item.url || "";
   const meta = [item.city, item.country, formatEventRange(item.date, item.dateEnd)]
     .filter(Boolean)
     .join("  ·  ");
-  const href = isPhone && item.phone ? `tel:${item.phone}` : item.url || "#";
+  const href = isPhone ? `tel:${item.phone}` : item.url || "#";
+  const actionLabel = isPhone ? "Llamar" : c.action;
 
   useEffect(() => {
     if (!zoom) return;
@@ -68,8 +69,13 @@ export default function ListItem({ item }: { item: Resource }) {
       </div>
       <div className="dir-row-actions">
         {(item.url || item.phone) && (
-          <a className="primary" href={href} target="_blank" rel="noopener noreferrer">
-            {c.action}
+          <a
+            className="primary"
+            href={href}
+            target={isPhone ? undefined : "_blank"}
+            rel="noopener noreferrer"
+          >
+            {actionLabel}
           </a>
         )}
         {copyValue && (
