@@ -181,6 +181,11 @@ export async function fetchActivity(): Promise<ActivityEntry[]> {
   return data.items as ActivityEntry[];
 }
 
+export async function purge(id: string): Promise<void> {
+  const res = await authFetch(`/api/admin/submissions/${id}/purge`, { method: "POST" });
+  if (!res.ok) throw new Error("No se pudo eliminar definitivamente.");
+}
+
 export async function unpublish(id: string): Promise<void> {
   const res = await authFetch(`/api/admin/submissions/${id}/unpublish`, { method: "POST" });
   if (!res.ok) throw new Error("No se pudo despublicar.");

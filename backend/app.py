@@ -46,8 +46,8 @@ def valid_email(value):
 
 
 def record_log(action, entry):
-    """Queue an audit entry for a moderation action. Reads the resource's fields
-    now (so it works even right before a delete); the caller commits."""
+    """Queue an audit entry for a moderation action on a resource. Reads the
+    resource's fields now (so it works even right before a delete); caller commits."""
     db.session.add(
         ModerationLog(
             admin_email=getattr(g, "admin_email", None),
@@ -55,6 +55,18 @@ def record_log(action, entry):
             target_id=entry.id,
             target_title=entry.title,
             target_category=entry.category,
+        )
+    )
+
+
+def record_action(action, label=None, category=None):
+    """Queue an audit entry for a non-resource admin action (admins, gallery, etc.)."""
+    db.session.add(
+        ModerationLog(
+            admin_email=getattr(g, "admin_email", None),
+            action=action,
+            target_title=label,
+            target_category=category,
         )
     )
 
@@ -327,8 +339,9 @@ def create_app():
         n = normalize_url(raw_url)
         digits = only_digits(raw_url)
 
-        # Reject duplicates against everything already in the table.
-        for r in Resource.query.all():
+        # Reject duplicates — but ignore archived (rejected) entries so a rejected
+        # link can be resubmitted.
+        for r in Resource.query.filter(Resource.status != "rejected").all():
             if r.url and normalize_url(r.url) == n and n:
                 if r.status == "pending":
                     return jsonify({"error": "Este enlace ya fue enviado y está en revisión."}), 409
@@ -431,20 +444,34 @@ def create_app():
         entry.verified = bool(verified)
         record_log("approve", entry)
         db.session.commit()
-        broker.publish({"scopes": ["pending", "published"]})
+        broker.publish({"scopes": ["pending", "published", "rejected"]})
         return jsonify({"ok": True, "item": entry.to_admin_dict()})
 
     @app.post("/api/admin/submissions/<sid>/reject")
     @require_admin
     def admin_reject(sid):
+        """Soft delete: archive the entry as 'rejected' (recoverable)."""
         entry = db.session.get(Resource, sid)
         if not entry:
             return jsonify({"error": "No encontrado."}), 404
-        scope = "published" if entry.status == "published" else "pending"
+        prev = entry.status
+        entry.status = "rejected"
         record_log("reject", entry)
+        db.session.commit()
+        broker.publish({"scopes": [prev, "rejected"]})
+        return jsonify({"ok": True})
+
+    @app.post("/api/admin/submissions/<sid>/purge")
+    @require_admin
+    def admin_purge(sid):
+        """Hard delete: permanently remove the entry from the database."""
+        entry = db.session.get(Resource, sid)
+        if not entry:
+            return jsonify({"error": "No encontrado."}), 404
+        record_log("delete", entry)
         db.session.delete(entry)
         db.session.commit()
-        broker.publish({"scopes": [scope]})
+        broker.publish({"scopes": ["rejected"]})
         return jsonify({"ok": True})
 
     @app.post("/api/admin/submissions/<sid>/unpublish")
@@ -506,6 +533,7 @@ def create_app():
         elif loc_changed:
             coords = geocode(entry.city, entry.country)
             entry.lat, entry.lng = coords if coords else (None, None)
+        record_log("edit", entry)
         db.session.commit()
         broker.publish({"scopes": [entry.status]})
         return jsonify({"ok": True, "item": entry.to_admin_dict()})
@@ -541,6 +569,7 @@ def create_app():
             return jsonify({"error": "Ya existe un administrador con ese correo."}), 409
         admin = AdminUser(email=email, password_hash=generate_password_hash(password))
         db.session.add(admin)
+        record_action("admin_add", label=email, category="admin")
         db.session.commit()
         return jsonify({"ok": True, "id": admin.id, "email": admin.email}), 201
 
@@ -554,6 +583,7 @@ def create_app():
             return jsonify({"error": "No puedes eliminar tu propia cuenta."}), 400
         if AdminUser.query.count() <= 1:
             return jsonify({"error": "Debe quedar al menos un administrador."}), 400
+        record_action("admin_remove", label=admin.email, category="admin")
         db.session.delete(admin)
         db.session.commit()
         return jsonify({"ok": True})
@@ -573,6 +603,7 @@ def create_app():
         if len(new) < 8:
             return jsonify({"error": "La nueva contraseña debe tener al menos 8 caracteres."}), 400
         user.password_hash = generate_password_hash(new)
+        record_action("password", label=g.admin_email, category="cuenta")
         db.session.commit()
         return jsonify({"ok": True})
 
@@ -594,6 +625,9 @@ def create_app():
                 updated += 1
                 db.session.commit()
             time.sleep(1)
+        if updated:
+            record_action("geocode", label=f"{updated} ubicaciones", category="mapa")
+            db.session.commit()
         return jsonify({"ok": True, "updated": updated, "scanned": len(rows)})
 
     @app.post("/api/admin/gallery")
@@ -606,6 +640,7 @@ def create_app():
         caption = (data.get("caption") or "").strip()[:280] or None
         photo = GalleryPhoto(image_url=image, caption=caption)
         db.session.add(photo)
+        record_action("gallery_add", label=caption or "Foto de galería", category="galeria")
         db.session.commit()
         return jsonify({"ok": True, "item": photo.to_dict()}), 201
 
@@ -615,6 +650,7 @@ def create_app():
         photo = db.session.get(GalleryPhoto, pid)
         if not photo:
             return jsonify({"error": "No encontrado."}), 404
+        record_action("gallery_remove", label=photo.caption or "Foto de galería", category="galeria")
         db.session.delete(photo)
         db.session.commit()
         return jsonify({"ok": True})

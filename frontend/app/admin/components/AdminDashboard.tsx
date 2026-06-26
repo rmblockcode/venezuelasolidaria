@@ -9,6 +9,7 @@ import {
   clearToken,
   fetchSubmissions,
   patchSubmission,
+  purge,
   reject,
   unpublish,
   UnauthorizedError,
@@ -23,7 +24,7 @@ import AdminGeocode from "./AdminGeocode";
 import AdminGallery from "./AdminGallery";
 import Pagination from "../../components/Pagination";
 
-type ResourceTab = "pending" | "published";
+type ResourceTab = "pending" | "published" | "rejected";
 type Tab = ResourceTab | "admins" | "galeria";
 type VerFilter = "todos" | "si" | "no";
 const PAGE_SIZE = 10;
@@ -65,7 +66,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     [onLogout]
   );
 
-  const isResourceTab = tab === "pending" || tab === "published";
+  const isResourceTab = tab === "pending" || tab === "published" || tab === "rejected";
 
   useEffect(() => {
     if (isResourceTab) load(tab);
@@ -97,7 +98,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     run(id, () => approve(id, verifyFlags[id] ?? true), "Error al aprobar.");
   const onReject = (id: string) => run(id, () => reject(id), "Error al rechazar.");
   const onUnpublish = (id: string) => run(id, () => unpublish(id), "Error al despublicar.");
-  const onDelete = (id: string) => run(id, () => reject(id), "Error al eliminar.");
+  const onArchive = (id: string) => run(id, () => reject(id), "Error al eliminar.");
+  const onPurge = (id: string) => run(id, () => purge(id), "Error al eliminar definitivamente.");
 
   async function toggleVerified(item: AdminResource, value: boolean) {
     setBusyId(item.id);
@@ -156,6 +158,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       ? "Galería de portada"
       : tab === "pending"
       ? "Envíos pendientes"
+      : tab === "rejected"
+      ? "Rechazados"
       : "Publicados";
   const subtitle =
     tab === "admins"
@@ -168,6 +172,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       ? `${filtered.length} de ${items.length}`
       : tab === "pending"
       ? `${items.length} por revisar`
+      : tab === "rejected"
+      ? `${items.length} archivados`
       : `${items.length} en el directorio`;
 
   return (
@@ -201,6 +207,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           onClick={() => setTab("published")}
         >
           Publicados
+        </button>
+        <button
+          className={`admin-tab${tab === "rejected" ? " active" : ""}`}
+          onClick={() => setTab("rejected")}
+        >
+          Rechazados
         </button>
         <button
           className={`admin-tab${tab === "galeria" ? " active" : ""}`}
@@ -287,10 +299,18 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
       {!loading && items.length === 0 && !error && (
         <div className="admin-empty">
-          <p className="t">{tab === "pending" ? "Todo al día ✓" : "Aún no hay publicados"}</p>
+          <p className="t">
+            {tab === "pending"
+              ? "Todo al día ✓"
+              : tab === "rejected"
+              ? "Nada rechazado"
+              : "Aún no hay publicados"}
+          </p>
           <p className="d">
             {tab === "pending"
               ? "No hay envíos pendientes de revisión."
+              : tab === "rejected"
+              ? "Los envíos que rechaces se archivan aquí y puedes recuperarlos."
               : "Los recursos aprobados aparecerán aquí."}
           </p>
         </div>
@@ -359,7 +379,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               </div>
 
               <div className="admin-row-actions">
-                {tab === "pending" ? (
+                {tab === "pending" || tab === "rejected" ? (
                   <>
                     <label className="verify-toggle">
                       <input
@@ -386,13 +406,23 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       >
                         Editar
                       </button>
-                      <button
-                        className="reject"
-                        onClick={() => onReject(item.id)}
-                        disabled={busyId === item.id}
-                      >
-                        Rechazar
-                      </button>
+                      {tab === "pending" ? (
+                        <button
+                          className="reject"
+                          onClick={() => onReject(item.id)}
+                          disabled={busyId === item.id}
+                        >
+                          Rechazar
+                        </button>
+                      ) : (
+                        <button
+                          className="delete"
+                          onClick={() => onPurge(item.id)}
+                          disabled={busyId === item.id}
+                        >
+                          Eliminar definitivamente
+                        </button>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -423,7 +453,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       </button>
                       <button
                         className="delete"
-                        onClick={() => onDelete(item.id)}
+                        onClick={() => onArchive(item.id)}
                         disabled={busyId === item.id}
                       >
                         Eliminar

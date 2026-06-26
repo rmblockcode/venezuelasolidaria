@@ -8,6 +8,14 @@ const ACTIONS: Record<string, { label: string; cls: string }> = {
   approve: { label: "aprobó", cls: "act-approve" },
   reject: { label: "rechazó", cls: "act-reject" },
   unpublish: { label: "despublicó", cls: "act-unpublish" },
+  edit: { label: "editó", cls: "act-edit" },
+  delete: { label: "eliminó definitivamente", cls: "act-reject" },
+  admin_add: { label: "agregó al administrador", cls: "act-approve" },
+  admin_remove: { label: "eliminó al administrador", cls: "act-reject" },
+  password: { label: "cambió su contraseña", cls: "act-edit" },
+  gallery_add: { label: "agregó a la galería", cls: "act-approve" },
+  gallery_remove: { label: "quitó de la galería", cls: "act-reject" },
+  geocode: { label: "rellenó ubicaciones", cls: "act-edit" },
 };
 
 export default function AdminActivity({ onLogout }: { onLogout: () => void }) {
@@ -41,7 +49,7 @@ export default function AdminActivity({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="admin-activity">
       <div className="admin-section-head">
-        <h2>Actividad reciente</h2>
+        <h2>Auditoría</h2>
         <button className="ghost" onClick={() => load()} disabled={loading}>
           Actualizar
         </button>
@@ -60,8 +68,8 @@ export default function AdminActivity({ onLogout }: { onLogout: () => void }) {
             return (
               <li key={it.id} className="activity-row">
                 <span className="activity-text">
-                  <strong>{it.admin || "—"}</strong> <span className={a.cls}>{a.label}</span>{" "}
-                  «{it.title || "(sin título)"}»
+                  <strong>{it.admin || "—"}</strong> <span className={a.cls}>{a.label}</span>
+                  {it.title ? <> «{it.title}»</> : ""}
                 </span>
                 {it.created_at && (
                   <span className="activity-time">
