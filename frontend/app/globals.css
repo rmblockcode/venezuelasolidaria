@@ -107,6 +107,26 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .mapwrap{position:relative;isolation:isolate;height:70vh;min-height:420px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .leaflet-map{height:100%;width:100%}
 .map-note{margin:12px 2px 0;font-size:12.5px;color:var(--muted)}
+
+/* list (rows) view */
+.dir-list{display:flex;flex-direction:column;gap:12px}
+.dir-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--cat);border-radius:14px;padding:16px 18px;transition:box-shadow .15s ease}
+.dir-row:hover{box-shadow:0 10px 24px rgba(20,20,20,.08)}
+.dir-thumb{width:72px;height:72px;border-radius:11px;object-fit:cover;border:1px solid var(--line);background:var(--surface-2);flex-shrink:0;cursor:zoom-in}
+.dir-row-main{flex:1;min-width:240px}
+.dir-row-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
+.dir-row .dir-meta{font-size:12.5px;color:var(--muted);font-weight:600}
+.dir-row h3{margin:0 0 4px;font-family:var(--font-serif),serif;font-weight:600;font-size:18px;line-height:1.25;color:var(--ink)}
+.dir-desc{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dir-row-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.dir-row-actions a.primary{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:10px;background:var(--cat);color:#fff;font:700 13px/1 'Hanken Grotesk';text-decoration:none;transition:filter .12s ease}
+.dir-row-actions a.primary:hover{filter:brightness(1.07)}
+.dir-row-actions button.copy{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--ink);font:600 13px/1 'Hanken Grotesk';cursor:pointer;transition:background .12s ease}
+.dir-row-actions button.copy:hover{background:var(--surface-2)}
+@media (max-width:640px){
+  .dir-row-actions{width:100%}
+  .dir-row-actions a.primary{flex:1;justify-content:center}
+}
 .vz-pin{background:transparent;border:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
 .map-pop{--cat:var(--brand);width:210px;font-family:'Hanken Grotesk',sans-serif}
 .map-pop-img{width:100%;height:104px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block}

@@ -8,6 +8,7 @@ import { fetchResources } from "../lib/api";
 import { useEventStream } from "../lib/useEventStream";
 import { isIsoDate } from "../lib/format";
 import Card from "./Card";
+import ListItem from "./ListItem";
 import AddModal from "./AddModal";
 import Pagination from "./Pagination";
 
@@ -32,7 +33,7 @@ export default function Directory() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [page, setPage] = useState(1);
-  const [view, setView] = useState<"lista" | "mapa">("lista");
+  const [view, setView] = useState<"tarjetas" | "lista" | "mapa">("tarjetas");
   const [showAdd, setShowAdd] = useState(false);
 
   async function load(silent = false) {
@@ -286,6 +287,12 @@ export default function Directory() {
           </div>
           <div className="viewtoggle">
             <button
+              className={view === "tarjetas" ? "active" : ""}
+              onClick={() => setView("tarjetas")}
+            >
+              ▦ Tarjetas
+            </button>
+            <button
               className={view === "lista" ? "active" : ""}
               onClick={() => setView("lista")}
             >
@@ -334,6 +341,15 @@ export default function Directory() {
               )}
             </>
           )
+        ) : view === "lista" ? (
+          <>
+            <div className="dir-list">
+              {pageItems.map((item) => (
+                <ListItem key={item.id} item={item} />
+              ))}
+            </div>
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </>
         ) : (
           <>
             <div className="grid">
