@@ -8,8 +8,10 @@ import { useEventStream } from "../lib/useEventStream";
 import { isIsoDate } from "../lib/format";
 import Card from "./Card";
 import AddModal from "./AddModal";
+import Pagination from "./Pagination";
 
 const THEME_KEY = "vzla-dir-theme";
+const PAGE_SIZE = 9;
 
 export default function Directory() {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -22,6 +24,7 @@ export default function Directory() {
   const [pais, setPais] = useState("todos");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
+  const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
 
   async function load(silent = false) {
@@ -97,6 +100,19 @@ export default function Directory() {
         (!dateActive || matchesDateRange(r, desde, hasta))
     );
   }, [resources, query, cat, pais, desde, hasta, dateActive]);
+
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const pageItems = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Back to page 1 whenever the filters change.
+  useEffect(() => {
+    setPage(1);
+  }, [query, cat, pais, desde, hasta]);
+
+  // Keep the page in range after live (SSE) updates shrink the list.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div data-theme={theme}>
@@ -275,11 +291,14 @@ export default function Directory() {
             <button onClick={() => setShowAdd(true)}>+ Agregar enlace</button>
           </div>
         ) : (
-          <div className="grid">
-            {list.map((item) => (
-              <Card key={item.id} item={item} />
-            ))}
-          </div>
+          <>
+            <div className="grid">
+              {pageItems.map((item) => (
+                <Card key={item.id} item={item} />
+              ))}
+            </div>
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </>
         )}
       </section>
 
@@ -299,22 +318,17 @@ export default function Directory() {
               campaña sea real y que no esté duplicada.
             </p>
           </div>
-          <div>
-            <div className="h">Reportar un enlace</div>
-            <p>
-              ¿Viste algo sospechoso o desactualizado?{" "}
-              <a href="mailto:reportes@ejemplo.org">Avísanos aquí</a> y lo revisamos.
-            </p>
-          </div>
-          <div>
-            <div className="h">Aviso</div>
-            <p>
-              Demostración del directorio. Varios enlaces son de ejemplo: verifica siempre antes de
-              donar o compartir datos.
-            </p>
-          </div>
         </div>
       </footer>
+
+      <button
+        className="fab"
+        onClick={() => setShowAdd(true)}
+        aria-label="Agregar enlace"
+        title="Agregar enlace"
+      >
+        +
+      </button>
 
       {showAdd && (
         <AddModal

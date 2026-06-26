@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { CATS } from "../../lib/constants";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CategoryKey } from "../../lib/types";
+import { CATS, CAT_ORDER } from "../../lib/constants";
 import {
   AdminResource,
   approve,
@@ -15,8 +16,13 @@ import {
 import { useEventStream } from "../../lib/useEventStream";
 import { formatEventRange } from "../../lib/format";
 import AdminEditModal from "./AdminEditModal";
+import AdminUsers from "./AdminUsers";
+import Pagination from "../../components/Pagination";
 
-type Tab = "pending" | "published";
+type ResourceTab = "pending" | "published";
+type Tab = ResourceTab | "admins";
+type VerFilter = "todos" | "si" | "no";
+const PAGE_SIZE = 10;
 
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("pending");
@@ -27,8 +33,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminResource | null>(null);
 
+  // filters + pagination
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<CategoryKey | "todos">("todos");
+  const [verFilter, setVerFilter] = useState<VerFilter>("todos");
+  const [page, setPage] = useState(1);
+
   const load = useCallback(
-    async (which: Tab, silent = false) => {
+    async (which: ResourceTab, silent = false) => {
       if (!silent) setLoading(true);
       setError("");
       try {
@@ -50,12 +62,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   );
 
   useEffect(() => {
-    load(tab);
+    if (tab !== "admins") load(tab);
   }, [load, tab]);
 
   // Live updates: refresh the active tab when its scope changes on the server.
   useEventStream((scopes) => {
-    if (scopes.includes(tab)) load(tab, true);
+    if (tab !== "admins" && scopes.includes(tab)) load(tab, true);
   });
 
   function handleError(e: unknown, fallback: string) {
@@ -98,12 +110,55 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     onLogout();
   }
 
-  const title = tab === "pending" ? "Envíos pendientes" : "Publicados";
-  const subtitle = loading
-    ? "Cargando…"
-    : tab === "pending"
-    ? `${items.length} por revisar`
-    : `${items.length} en el directorio`;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((i) => {
+      if (catFilter !== "todos" && i.category !== catFilter) return false;
+      if (tab === "published" && verFilter !== "todos") {
+        if (verFilter === "si" && !i.verified) return false;
+        if (verFilter === "no" && i.verified) return false;
+      }
+      if (
+        q &&
+        !`${i.title} ${i.desc} ${i.city || ""} ${i.country || ""} ${i.contact || ""}`
+          .toLowerCase()
+          .includes(q)
+      )
+        return false;
+      return true;
+    });
+  }, [items, search, catFilter, verFilter, tab]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const filtering = search.trim() !== "" || catFilter !== "todos" || verFilter !== "todos";
+
+  // Reset to page 1 when the tab or any filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [tab, search, catFilter, verFilter]);
+
+  // Keep page in range after live updates / filtering shrink the list.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const title =
+    tab === "admins"
+      ? "Administradores"
+      : tab === "pending"
+      ? "Envíos pendientes"
+      : "Publicados";
+  const subtitle =
+    tab === "admins"
+      ? "Gestiona quién puede moderar"
+      : loading
+      ? "Cargando…"
+      : filtering
+      ? `${filtered.length} de ${items.length}`
+      : tab === "pending"
+      ? `${items.length} por revisar`
+      : `${items.length} en el directorio`;
 
   return (
     <div className="admin-wrap">
@@ -113,9 +168,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <p className="sub">{subtitle}</p>
         </div>
         <div className="admin-head-actions">
-          <button className="ghost" onClick={() => load(tab)} disabled={loading}>
-            Actualizar
-          </button>
+          {tab !== "admins" && (
+            <button className="ghost" onClick={() => load(tab)} disabled={loading}>
+              Actualizar
+            </button>
+          )}
           <button className="ghost" onClick={logout}>
             Salir
           </button>
@@ -135,6 +192,55 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         >
           Publicados
         </button>
+        <button
+          className={`admin-tab${tab === "admins" ? " active" : ""}`}
+          onClick={() => setTab("admins")}
+        >
+          Administradores
+        </button>
+      </div>
+
+      {tab === "admins" && <AdminUsers onLogout={onLogout} />}
+
+      {tab !== "admins" && (
+      <>
+      <div className="admin-filters">
+        <input
+          className="admin-search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por título, ciudad, país o contacto…"
+        />
+        <div className="admin-chips">
+          <button
+            className="chip"
+            style={chip(catFilter === "todos", "var(--brand)")}
+            onClick={() => setCatFilter("todos")}
+          >
+            Todos
+          </button>
+          {CAT_ORDER.map((k) => (
+            <button
+              key={k}
+              className="chip"
+              style={chip(catFilter === k, CATS[k].color)}
+              onClick={() => setCatFilter(k)}
+            >
+              {CATS[k].label}
+            </button>
+          ))}
+        </div>
+        {tab === "published" && (
+          <select
+            className="admin-verselect"
+            value={verFilter}
+            onChange={(e) => setVerFilter(e.target.value as VerFilter)}
+          >
+            <option value="todos">Todas</option>
+            <option value="si">✓ Verificadas</option>
+            <option value="no">Sin verificar</option>
+          </select>
+        )}
       </div>
 
       {error && <div className="err">{error}</div>}
@@ -150,8 +256,15 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       )}
 
+      {!loading && items.length > 0 && filtered.length === 0 && !error && (
+        <div className="admin-empty">
+          <p className="t">Sin resultados</p>
+          <p className="d">Ningún registro coincide con los filtros.</p>
+        </div>
+      )}
+
       <div className="admin-list">
-        {items.map((item) => {
+        {pageItems.map((item) => {
           const c = CATS[item.category];
           const meta = [item.city, item.country, formatEventRange(item.date, item.dateEnd)]
             .filter(Boolean)
@@ -284,6 +397,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         })}
       </div>
 
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      </>
+      )}
+
       {editing && (
         <AdminEditModal
           item={editing}
@@ -297,4 +414,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       )}
     </div>
   );
+}
+
+function chip(active: boolean, color: string): React.CSSProperties {
+  if (active) return { border: `1px solid ${color}`, background: color, color: "#fff" };
+  return {};
 }

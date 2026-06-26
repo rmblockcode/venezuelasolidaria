@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import jwt
-from flask import Flask, Response, jsonify, request, stream_with_context
+from flask import Flask, Response, g, jsonify, request, stream_with_context
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -35,6 +35,13 @@ def valid_iso_date(value):
     if not value:
         return True
     return bool(ISO_DATE_RE.match(value.strip()))
+
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def valid_email(value):
+    return bool(EMAIL_RE.match((value or "").strip()))
 
 
 def valid_image_url(value):
@@ -187,9 +194,11 @@ def create_app():
                 return jsonify({"error": "No autorizado."}), 401
             token = header[len("Bearer "):].strip()
             try:
-                jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
+                payload = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
             except jwt.PyJWTError:
                 return jsonify({"error": "Sesión inválida o expirada."}), 401
+            g.admin_id = payload.get("sub")
+            g.admin_email = payload.get("email")
             return fn(*args, **kwargs)
 
         return wrapper
@@ -448,6 +457,54 @@ def create_app():
         db.session.commit()
         broker.publish({"scopes": [entry.status]})
         return jsonify({"ok": True, "item": entry.to_admin_dict()})
+
+    # ---- admin user management ----
+    @app.get("/api/admin/admins")
+    @require_admin
+    def list_admins():
+        admins = AdminUser.query.order_by(AdminUser.created_at.asc()).all()
+        return jsonify({
+            "items": [
+                {
+                    "id": a.id,
+                    "email": a.email,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    "isSelf": a.email == g.admin_email,
+                }
+                for a in admins
+            ]
+        })
+
+    @app.post("/api/admin/admins")
+    @require_admin
+    def create_admin():
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+        if not valid_email(email):
+            return jsonify({"error": "Correo no válido."}), 400
+        if len(password) < 8:
+            return jsonify({"error": "La contraseña debe tener al menos 8 caracteres."}), 400
+        if AdminUser.query.filter_by(email=email).first():
+            return jsonify({"error": "Ya existe un administrador con ese correo."}), 409
+        admin = AdminUser(email=email, password_hash=generate_password_hash(password))
+        db.session.add(admin)
+        db.session.commit()
+        return jsonify({"ok": True, "id": admin.id, "email": admin.email}), 201
+
+    @app.post("/api/admin/admins/<int:aid>/delete")
+    @require_admin
+    def delete_admin(aid):
+        admin = db.session.get(AdminUser, aid)
+        if not admin:
+            return jsonify({"error": "No encontrado."}), 404
+        if admin.email == g.admin_email:
+            return jsonify({"error": "No puedes eliminar tu propia cuenta."}), 400
+        if AdminUser.query.count() <= 1:
+            return jsonify({"error": "Debe quedar al menos un administrador."}), 400
+        db.session.delete(admin)
+        db.session.commit()
+        return jsonify({"ok": True})
 
     return app
 

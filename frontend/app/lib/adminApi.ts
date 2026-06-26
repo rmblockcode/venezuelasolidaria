@@ -86,6 +86,42 @@ export async function reject(id: string): Promise<void> {
   if (!res.ok) throw new Error("No se pudo rechazar.");
 }
 
+export interface AdminUserDTO {
+  id: number;
+  email: string;
+  created_at?: string | null;
+  isSelf?: boolean;
+}
+
+export async function listAdmins(): Promise<AdminUserDTO[]> {
+  const res = await authFetch(`/api/admin/admins`);
+  if (!res.ok) throw new Error("No se pudieron cargar los administradores.");
+  const data = await res.json();
+  return data.items as AdminUserDTO[];
+}
+
+export async function createAdmin(
+  email: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await authFetch(`/api/admin/admins`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data.error || "No se pudo crear el administrador." };
+  return { ok: true };
+}
+
+export async function deleteAdmin(id: number): Promise<void> {
+  const res = await authFetch(`/api/admin/admins/${id}/delete`, { method: "POST" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "No se pudo eliminar el administrador.");
+  }
+}
+
 export async function unpublish(id: string): Promise<void> {
   const res = await authFetch(`/api/admin/submissions/${id}/unpublish`, { method: "POST" });
   if (!res.ok) throw new Error("No se pudo despublicar.");
