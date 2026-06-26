@@ -63,6 +63,9 @@ export async function login(email: string, password: string): Promise<{ ok: bool
 export interface AdminResource extends Resource {
   contact?: string | null;
   created_at?: string | null;
+  moderatedBy?: string | null;
+  moderatedAt?: string | null;
+  moderationAction?: string | null;
 }
 
 export async function fetchSubmissions(status = "pending"): Promise<AdminResource[]> {

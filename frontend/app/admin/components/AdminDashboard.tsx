@@ -375,6 +375,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       <strong>Enviado:</strong> {new Date(item.created_at).toLocaleString("es")}
                     </span>
                   )}
+                  {item.moderationAction && item.moderatedBy && (
+                    <span className="admin-moderated">
+                      <strong>{MOD_LABELS[item.moderationAction] || "Moderado"} por:</strong>{" "}
+                      {item.moderatedBy}
+                      {item.moderatedAt &&
+                        ` · ${new Date(item.moderatedAt).toLocaleString("es")}`}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -485,6 +493,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     </div>
   );
 }
+
+const MOD_LABELS: Record<string, string> = {
+  approve: "Aprobado",
+  reject: "Rechazado",
+  unpublish: "Despublicado",
+};
 
 function chip(active: boolean, color: string): React.CSSProperties {
   if (active) return { border: `1px solid ${color}`, background: color, color: "#fff" };

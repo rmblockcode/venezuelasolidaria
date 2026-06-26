@@ -81,12 +81,15 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 /* hero text with subtle moving photo banner behind it */
 .hero-head{position:relative}
 .hero-head-content{position:relative;z-index:1;max-width:740px}
-.hero-head.with-bg{border-radius:18px;overflow:hidden;border:1px solid var(--line);padding:40px 34px}
-.hero-head.with-bg .hero-head-content{max-width:680px}
-.hg-bg{position:absolute;inset:0;z-index:0;opacity:.22;pointer-events:none}
+.hero-head.with-bg{border-radius:18px;overflow:hidden;border:1px solid var(--line);padding:44px 36px;isolation:isolate}
+.hero-head.with-bg .hero-head-content{max-width:640px;z-index:2}
+.hero-head.with-bg h1,.hero-head.with-bg .lede{text-shadow:0 1px 2px color-mix(in srgb,var(--bg) 70%,transparent)}
+/* scrim: clean on the left where the text sits, photo peeks on the right */
+.hero-head.with-bg::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(105deg,var(--bg) 0%,var(--bg) 34%,color-mix(in srgb,var(--bg) 35%,transparent) 70%,transparent 90%)}
+.hg-bg{position:absolute;inset:0;z-index:0;opacity:.32;pointer-events:none}
 .hg-bg .hg-track{display:flex;height:100%;transition:transform .9s cubic-bezier(.2,.8,.2,1)}
 .hg-bg .hg-slide{min-width:100%;height:100%}
-.hg-bg .hg-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.hg-bg .hg-slide img{width:100%;height:100%;object-fit:cover;display:block;filter:blur(2px) saturate(1.05)}
 .hero-head.with-bg .hg-dots{position:absolute;bottom:12px;right:16px;z-index:1;display:flex;gap:6px}
 .hg-dots button{width:7px;height:7px;border-radius:50%;border:none;background:color-mix(in srgb,var(--ink) 30%,transparent);cursor:pointer;padding:0;transition:all .2s ease}
 .hg-dots button.active{background:var(--ink);width:18px;border-radius:4px}
@@ -382,6 +385,8 @@ footer.site a{color:var(--brand);font-weight:600}
 .admin-fields{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
 .admin-fields strong{color:var(--ink);font-weight:700}
 .admin-fields a{color:var(--brand);font-weight:600;word-break:break-all}
+.admin-moderated{color:var(--brand)}
+.admin-moderated strong{color:var(--brand)}
 .admin-row-actions{display:flex;flex-direction:column;gap:10px;justify-content:center;align-items:flex-start;min-width:170px}
 .verify-toggle{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer}
 .verify-toggle input{width:15px;height:15px;accent-color:#2f8a6b;cursor:pointer}

@@ -27,6 +27,9 @@ class Resource(db.Model):
     image_url = db.Column(db.String(2048))
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
+    moderated_by = db.Column(db.String(255))
+    moderated_at = db.Column(db.DateTime(timezone=True))
+    moderation_action = db.Column(db.String(20))
     verified = db.Column(db.Boolean, nullable=False, default=False)
     status = db.Column(db.String(20), nullable=False, default="published", index=True)
     contact = db.Column(db.String(280))
@@ -59,6 +62,9 @@ class Resource(db.Model):
         data = self.to_dict()
         data["contact"] = self.contact
         data["created_at"] = self.created_at.isoformat() if self.created_at else None
+        data["moderatedBy"] = self.moderated_by
+        data["moderatedAt"] = self.moderated_at.isoformat() if self.moderated_at else None
+        data["moderationAction"] = self.moderation_action
         return data
 
 

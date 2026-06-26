@@ -59,6 +59,13 @@ def record_log(action, entry):
     )
 
 
+def stamp_moderation(entry, action):
+    """Record who moderated this resource and when, for per-post attribution."""
+    entry.moderated_by = getattr(g, "admin_email", None)
+    entry.moderated_at = datetime.now(timezone.utc)
+    entry.moderation_action = action
+
+
 def record_action(action, label=None, category=None):
     """Queue an audit entry for a non-resource admin action (admins, gallery, etc.)."""
     db.session.add(
@@ -129,6 +136,9 @@ def ensure_schema():
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url varchar(2048)",
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS lat double precision",
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS lng double precision",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS moderated_by varchar(255)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS moderated_at timestamptz",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS moderation_action varchar(20)",
     ]
     for s in stmts:
         db.session.execute(text(s))
@@ -442,6 +452,7 @@ def create_app():
         verified = data.get("verified", True)
         entry.status = "published"
         entry.verified = bool(verified)
+        stamp_moderation(entry, "approve")
         record_log("approve", entry)
         db.session.commit()
         broker.publish({"scopes": ["pending", "published", "rejected"]})
@@ -456,6 +467,7 @@ def create_app():
             return jsonify({"error": "No encontrado."}), 404
         prev = entry.status
         entry.status = "rejected"
+        stamp_moderation(entry, "reject")
         record_log("reject", entry)
         db.session.commit()
         broker.publish({"scopes": [prev, "rejected"]})
@@ -482,6 +494,7 @@ def create_app():
         if not entry:
             return jsonify({"error": "No encontrado."}), 404
         entry.status = "pending"
+        stamp_moderation(entry, "unpublish")
         record_log("unpublish", entry)
         db.session.commit()
         broker.publish({"scopes": ["pending", "published"]})
