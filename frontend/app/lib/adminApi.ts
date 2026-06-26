@@ -146,6 +146,25 @@ export async function geocodeMissing(): Promise<{ updated: number; scanned: numb
   return { updated: data.updated ?? 0, scanned: data.scanned ?? 0 };
 }
 
+export async function addGalleryPhoto(
+  image: string,
+  caption: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await authFetch(`/api/admin/gallery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image, caption }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data.error || "No se pudo agregar la foto." };
+  return { ok: true };
+}
+
+export async function deleteGalleryPhoto(id: number): Promise<void> {
+  const res = await authFetch(`/api/admin/gallery/${id}/delete`, { method: "POST" });
+  if (!res.ok) throw new Error("No se pudo eliminar la foto.");
+}
+
 export interface ActivityEntry {
   id: number;
   admin: string | null;

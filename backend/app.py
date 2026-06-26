@@ -20,7 +20,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from events import broker
 from geocode import geocode
-from models import db, Resource, AdminUser, ModerationLog
+from models import db, Resource, AdminUser, ModerationLog, GalleryPhoto
 from seed_data import SEED
 
 load_dotenv()
@@ -284,6 +284,12 @@ def create_app():
             q = q.filter_by(country=country)
         items = q.order_by(Resource.created_at.desc()).all()
         return jsonify({"items": [r.to_dict() for r in items]})
+
+    @app.get("/api/gallery")
+    def list_gallery():
+        """Public hero-carousel photos, oldest first."""
+        photos = GalleryPhoto.query.order_by(GalleryPhoto.created_at.asc()).all()
+        return jsonify({"items": [p.to_dict() for p in photos]})
 
     @app.post("/api/submissions")
     @limiter.limit("5 per minute; 20 per hour")
@@ -589,6 +595,29 @@ def create_app():
                 db.session.commit()
             time.sleep(1)
         return jsonify({"ok": True, "updated": updated, "scanned": len(rows)})
+
+    @app.post("/api/admin/gallery")
+    @require_admin
+    def add_gallery_photo():
+        data = request.get_json(silent=True) or {}
+        image = (data.get("image") or "").strip()
+        if not valid_image_url(image) or not image:
+            return jsonify({"error": "La imagen debe ser un enlace http(s) válido."}), 400
+        caption = (data.get("caption") or "").strip()[:280] or None
+        photo = GalleryPhoto(image_url=image, caption=caption)
+        db.session.add(photo)
+        db.session.commit()
+        return jsonify({"ok": True, "item": photo.to_dict()}), 201
+
+    @app.post("/api/admin/gallery/<int:pid>/delete")
+    @require_admin
+    def delete_gallery_photo(pid):
+        photo = db.session.get(GalleryPhoto, pid)
+        if not photo:
+            return jsonify({"error": "No encontrado."}), 404
+        db.session.delete(photo)
+        db.session.commit()
+        return jsonify({"ok": True})
 
     @app.get("/api/admin/activity")
     @require_admin

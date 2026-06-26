@@ -20,10 +20,11 @@ import AdminUsers from "./AdminUsers";
 import AdminPassword from "./AdminPassword";
 import AdminActivity from "./AdminActivity";
 import AdminGeocode from "./AdminGeocode";
+import AdminGallery from "./AdminGallery";
 import Pagination from "../../components/Pagination";
 
 type ResourceTab = "pending" | "published";
-type Tab = ResourceTab | "admins";
+type Tab = ResourceTab | "admins" | "galeria";
 type VerFilter = "todos" | "si" | "no";
 const PAGE_SIZE = 10;
 
@@ -64,13 +65,15 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     [onLogout]
   );
 
+  const isResourceTab = tab === "pending" || tab === "published";
+
   useEffect(() => {
-    if (tab !== "admins") load(tab);
-  }, [load, tab]);
+    if (isResourceTab) load(tab);
+  }, [load, tab, isResourceTab]);
 
   // Live updates: refresh the active tab when its scope changes on the server.
   useEventStream((scopes) => {
-    if (tab !== "admins" && scopes.includes(tab)) load(tab, true);
+    if (isResourceTab && scopes.includes(tab)) load(tab, true);
   });
 
   function handleError(e: unknown, fallback: string) {
@@ -149,12 +152,16 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const title =
     tab === "admins"
       ? "Administradores"
+      : tab === "galeria"
+      ? "Galería de portada"
       : tab === "pending"
       ? "Envíos pendientes"
       : "Publicados";
   const subtitle =
     tab === "admins"
       ? "Gestiona quién puede moderar"
+      : tab === "galeria"
+      ? "Fotos del carrusel de la home"
       : loading
       ? "Cargando…"
       : filtering
@@ -171,7 +178,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <p className="sub">{subtitle}</p>
         </div>
         <div className="admin-head-actions">
-          {tab !== "admins" && (
+          {isResourceTab && (
             <button className="ghost" onClick={() => load(tab)} disabled={loading}>
               Actualizar
             </button>
@@ -196,12 +203,20 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           Publicados
         </button>
         <button
+          className={`admin-tab${tab === "galeria" ? " active" : ""}`}
+          onClick={() => setTab("galeria")}
+        >
+          Galería
+        </button>
+        <button
           className={`admin-tab${tab === "admins" ? " active" : ""}`}
           onClick={() => setTab("admins")}
         >
           Administradores
         </button>
       </div>
+
+      {tab === "galeria" && <AdminGallery onLogout={onLogout} />}
 
       {tab === "admins" && (
         <div className="admin-sections">
@@ -227,7 +242,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       )}
 
-      {tab !== "admins" && (
+      {isResourceTab && (
       <>
       <div className="admin-filters">
         <input

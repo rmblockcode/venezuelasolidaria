@@ -73,6 +73,20 @@ class AdminUser(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+class GalleryPhoto(db.Model):
+    """A photo shown in the home hero carousel."""
+
+    __tablename__ = "gallery_photos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(2048), nullable=False)
+    caption = db.Column(db.String(280))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    def to_dict(self):
+        return {"id": self.id, "image": self.image_url, "caption": self.caption}
+
+
 class ModerationLog(db.Model):
     """Audit trail: which admin moderated what, and when. Title/category are
     denormalized so the entry survives even if the resource is later deleted."""

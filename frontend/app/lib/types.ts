@@ -19,6 +19,12 @@ export interface Resource {
   status?: string;
 }
 
+export interface GalleryPhoto {
+  id: number;
+  image: string;
+  caption?: string | null;
+}
+
 export interface SubmissionForm {
   category: CategoryKey;
   title: string;

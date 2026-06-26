@@ -1,4 +1,4 @@
-import { Resource, SubmissionForm } from "./types";
+import { GalleryPhoto, Resource, SubmissionForm } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
@@ -7,6 +7,13 @@ export async function fetchResources(): Promise<Resource[]> {
   if (!res.ok) throw new Error(`No se pudo cargar el directorio (${res.status})`);
   const data = await res.json();
   return data.items as Resource[];
+}
+
+export async function fetchGallery(): Promise<GalleryPhoto[]> {
+  const res = await fetch(`${API_BASE}/api/gallery`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.items as GalleryPhoto[];
 }
 
 export interface SubmissionResult {

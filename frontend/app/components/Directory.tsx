@@ -10,6 +10,7 @@ import { isIsoDate } from "../lib/format";
 import { Timeframe, TIMEFRAMES, timeframeRange } from "../lib/timeframes";
 import Card from "./Card";
 import ListItem from "./ListItem";
+import HeroGallery from "./HeroGallery";
 import AddModal from "./AddModal";
 import Pagination from "./Pagination";
 
@@ -177,14 +178,14 @@ export default function Directory() {
       </header>
 
       <section className="hero wrap">
-        <div style={{ maxWidth: 740 }}>
+        <HeroGallery>
           <h1>Toda la ayuda para Venezuela, en un solo lugar.</h1>
           <p className="lede">
             Un directorio centralizado de recaudaciones, contactos de emergencia, páginas creadas
             por la comunidad y jornadas solidarias tras los sismos. Una sola dirección, todo
             verificado por la gente.
           </p>
-        </div>
+        </HeroGallery>
 
         <div className="searchrow">
           <div className="searchbox">
