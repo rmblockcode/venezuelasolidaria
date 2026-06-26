@@ -19,6 +19,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from events import broker
+from geocode import geocode
 from models import db, Resource, AdminUser, ModerationLog
 from seed_data import SEED
 
@@ -102,6 +103,8 @@ def ensure_schema():
     stmts = [
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS event_end_date varchar(60)",
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url varchar(2048)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS lat double precision",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS lng double precision",
     ]
     for s in stmts:
         db.session.execute(text(s))
@@ -331,6 +334,9 @@ def create_app():
             verified=False,
             status="pending",
         )
+        coords = geocode(entry.city, entry.country)
+        if coords:
+            entry.lat, entry.lng = coords
         db.session.add(entry)
         db.session.commit()
         broker.publish({"scopes": ["pending"]})
@@ -467,10 +473,14 @@ def create_app():
             "image": "image_url",
             "contact": "contact",
         }
+        loc_changed = "city" in data or "country" in data
         for key, attr in field_map.items():
             if key in data:
                 value = (data[key] or "").strip()
                 setattr(entry, attr, value or None)
+        if loc_changed:
+            coords = geocode(entry.city, entry.country)
+            entry.lat, entry.lng = coords if coords else (None, None)
         db.session.commit()
         broker.publish({"scopes": [entry.status]})
         return jsonify({"ok": True, "item": entry.to_admin_dict()})
@@ -540,6 +550,26 @@ def create_app():
         user.password_hash = generate_password_hash(new)
         db.session.commit()
         return jsonify({"ok": True})
+
+    @app.post("/api/admin/geocode-missing")
+    @require_admin
+    def geocode_missing():
+        """Backfill coordinates for published entries that have a place but no
+        lat/lng yet. Throttled to respect Nominatim's ~1 req/sec policy."""
+        rows = Resource.query.filter(
+            Resource.status == "published",
+            Resource.lat.is_(None),
+            db.or_(Resource.city.isnot(None), Resource.country.isnot(None)),
+        ).all()
+        updated = 0
+        for r in rows:
+            coords = geocode(r.city, r.country)
+            if coords:
+                r.lat, r.lng = coords
+                updated += 1
+                db.session.commit()
+            time.sleep(1)
+        return jsonify({"ok": True, "updated": updated, "scanned": len(rows)})
 
     @app.get("/api/admin/activity")
     @require_admin

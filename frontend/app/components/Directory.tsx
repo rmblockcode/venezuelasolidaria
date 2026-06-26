@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { CategoryKey, Resource, ThemeKey } from "../lib/types";
 import { CATS, CAT_ORDER, THEME_LABELS, THEME_ORDER } from "../lib/constants";
 import { fetchResources } from "../lib/api";
@@ -12,6 +13,12 @@ import Pagination from "./Pagination";
 
 const THEME_KEY = "vzla-dir-theme";
 const PAGE_SIZE = 9;
+
+// Leaflet needs `window`, so the map is client-only.
+const MapView = dynamic(() => import("./MapView"), {
+  ssr: false,
+  loading: () => <div className="loading">Cargando mapa…</div>,
+});
 
 export default function Directory() {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -25,6 +32,7 @@ export default function Directory() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<"lista" | "mapa">("lista");
   const [showAdd, setShowAdd] = useState(false);
 
   async function load(silent = false) {
@@ -106,6 +114,9 @@ export default function Directory() {
 
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   const pageItems = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const locatedCount = list.filter(
+    (i) => typeof i.lat === "number" && typeof i.lng === "number"
+  ).length;
 
   // Back to page 1 whenever the filters change.
   useEffect(() => {
@@ -265,14 +276,28 @@ export default function Directory() {
           )}
         </div>
 
-        <div className="statline">
-          <span className="strong">{list.length} recursos</span>
-          <span className="dot">·</span>
-          <span>{verifiedCount} verificados</span>
-          <span className="dot">·</span>
-          <span>
-            Verifica siempre antes de donar. La marca ✓ significa revisado por el equipo.
-          </span>
+        <div className="statbar">
+          <div className="statline">
+            <span className="strong">{list.length} recursos</span>
+            <span className="dot">·</span>
+            <span>{verifiedCount} verificados</span>
+            <span className="dot">·</span>
+            <span>Verifica siempre antes de donar. La marca ✓ significa revisado por el equipo.</span>
+          </div>
+          <div className="viewtoggle">
+            <button
+              className={view === "lista" ? "active" : ""}
+              onClick={() => setView("lista")}
+            >
+              ☰ Lista
+            </button>
+            <button
+              className={view === "mapa" ? "active" : ""}
+              onClick={() => setView("mapa")}
+            >
+              ◎ Mapa
+            </button>
+          </div>
         </div>
       </section>
 
@@ -293,6 +318,22 @@ export default function Directory() {
             </p>
             <button onClick={() => setShowAdd(true)}>+ Agregar enlace</button>
           </div>
+        ) : view === "mapa" ? (
+          locatedCount === 0 ? (
+            <div className="empty">
+              <p className="t">Sin ubicaciones para mostrar</p>
+              <p className="d">Ninguno de estos recursos tiene una ubicación reconocible.</p>
+            </div>
+          ) : (
+            <>
+              <MapView items={list} />
+              {locatedCount < list.length && (
+                <p className="map-note">
+                  {list.length - locatedCount} recurso(s) sin ubicación no aparecen en el mapa.
+                </p>
+              )}
+            </>
+          )
         ) : (
           <>
             <div className="grid">

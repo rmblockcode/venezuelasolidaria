@@ -97,7 +97,25 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .datefilter .clear{padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);font:600 12.5px/1 'Hanken Grotesk';cursor:pointer}
 .datefilter .clear:hover{background:var(--surface-2)}
 
-.statline{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:16px;font-size:12.5px;color:var(--muted)}
+.statbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:16px}
+.statline{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
+.viewtoggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px;flex-shrink:0}
+.viewtoggle button{padding:7px 16px;border-radius:999px;border:none;background:transparent;color:var(--muted);font:700 13px/1 'Hanken Grotesk';cursor:pointer;transition:all .12s ease}
+.viewtoggle button.active{background:var(--brand);color:#fff}
+
+/* map view */
+.mapwrap{position:relative;isolation:isolate;height:70vh;min-height:420px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.leaflet-map{height:100%;width:100%}
+.map-note{margin:12px 2px 0;font-size:12.5px;color:var(--muted)}
+.vz-pin{background:transparent;border:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.map-pop{--cat:var(--brand);width:210px;font-family:'Hanken Grotesk',sans-serif}
+.map-pop-img{width:100%;height:104px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block}
+.map-pop-tag{display:inline-block;padding:3px 9px;border-radius:999px;font:700 10.5px/1 'Hanken Grotesk';letter-spacing:.03em;text-transform:uppercase;color:var(--cat);background:color-mix(in srgb,var(--cat) 15%,#fff)}
+.map-pop h4{margin:7px 0 3px;font-family:'Newsreader',serif;font-weight:600;font-size:15.5px;color:#23201a;line-height:1.25}
+.map-pop-meta{margin:0 0 9px;font-size:12px;color:#736d61}
+.map-pop-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:9px;background:var(--cat);color:#fff !important;font:700 12.5px/1 'Hanken Grotesk';text-decoration:none}
+.leaflet-popup-content{margin:12px 14px}
+.leaflet-popup-content-wrapper{border-radius:12px}
 .statline .dot{opacity:.5}
 .statline .strong{font-weight:700;color:var(--ink)}
 

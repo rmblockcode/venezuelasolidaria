@@ -13,6 +13,8 @@ export interface Resource {
   date?: string | null;
   dateEnd?: string | null;
   image?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   verified: boolean;
   status?: string;
 }
