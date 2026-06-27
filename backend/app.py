@@ -20,12 +20,15 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from events import broker
 from geocode import geocode
-from models import db, Resource, AdminUser, ModerationLog, GalleryPhoto
+from models import db, Resource, AdminUser, ModerationLog, GalleryPhoto, PartnerKey
 from seed_data import SEED
 
 load_dotenv()
 
 DEFAULT_DB = "postgresql+psycopg://vzla:vzla@localhost:5432/venezuelasolidaria"
+
+# Public site URL used to build absolute share links in the federation feed.
+PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "https://www.venezuelasolidaria.com")
 
 
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -36,6 +39,21 @@ def valid_iso_date(value):
     if not value:
         return True
     return bool(ISO_DATE_RE.match(value.strip()))
+
+
+def parse_iso_datetime(value):
+    """Parse an ISO-8601 datetime for the federation ?since= filter. Returns an
+    aware datetime (assumes UTC if no offset given) or None when absent/invalid."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -129,6 +147,121 @@ def clamp_int(value, default, lo, hi):
     return max(lo, min(n, hi))
 
 
+def build_pending_resource(data, source=None):
+    """Shared create flow behind both the internal form (POST /api/submissions) and
+    the federation API (POST /api/v1/resources). Validates, detects url-vs-phone,
+    rejects duplicates, geocodes, and adds a `pending` Resource to the session
+    (the caller commits + publishes). Accepts federation field names
+    (description/start_date/end_date) and the internal ones (desc/date/dateEnd).
+    Returns (entry, None) on success or (None, (response, status)) on error."""
+    data = data or {}
+    category = (data.get("category") or "donaciones").strip()
+    title = (data.get("title") or "").strip()
+    raw_url = (data.get("url") or "").strip() or (data.get("phone") or "").strip()
+    desc = (data.get("description") if data.get("description") is not None else data.get("desc")) or ""
+    date = data.get("start_date") if data.get("start_date") is not None else data.get("date")
+    date_end = data.get("end_date") if data.get("end_date") is not None else data.get("dateEnd")
+    image = data.get("image")
+
+    if category not in Resource.CATEGORIES:
+        return None, (jsonify({"error": "Categoría no válida."}), 400)
+    if not title:
+        return None, (jsonify({"error": "Agrega un nombre o título para el enlace."}), 400)
+    if not raw_url:
+        return None, (jsonify({"error": "Agrega el enlace (URL) o un teléfono de contacto."}), 400)
+    if len(title) > 280:
+        return None, (jsonify({"error": "El título es demasiado largo (máx. 280 caracteres)."}), 400)
+    if len(desc) > 2000:
+        return None, (jsonify({"error": "La descripción es demasiado larga (máx. 2000 caracteres)."}), 400)
+    if len(raw_url) > 2048:
+        return None, (jsonify({"error": "El enlace es demasiado largo."}), 400)
+    if not valid_iso_date(date) or not valid_iso_date(date_end):
+        return None, (jsonify({"error": "Fecha no válida."}), 400)
+    if not valid_date_range(date, date_end):
+        return None, (jsonify({"error": "La fecha de fin no puede ser anterior a la de inicio."}), 400)
+    if not valid_image_url(image):
+        return None, (jsonify({"error": "La imagen debe ser un enlace http(s) válido."}), 400)
+
+    looks_like_phone = bool(re.match(r"^[\d\s()+\-]+$", raw_url)) and not raw_url.lower().startswith("http")
+    url = None if looks_like_phone else raw_url
+    phone = raw_url if looks_like_phone else None
+
+    n = normalize_url(raw_url)
+    digits = only_digits(raw_url)
+    if n:
+        dup = Resource.query.filter(
+            Resource.status != "rejected", Resource.url_norm == n
+        ).first()
+        if dup:
+            if dup.status == "pending":
+                return None, (jsonify({"error": "Este enlace ya fue enviado y está en revisión."}), 409)
+            return None, (jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409)
+    if digits:
+        if Resource.query.filter(
+            Resource.status != "rejected", Resource.phone_digits == digits
+        ).first():
+            return None, (jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409)
+
+    entry = Resource(
+        id=secrets.token_hex(8),
+        category=category,
+        title=title,
+        description=(desc or "").strip(),
+        url=url,
+        phone=phone,
+        city=(data.get("city") or "").strip() or None,
+        country=(data.get("country") or "").strip() or None,
+        event_date=(date or "").strip() or None,
+        event_end_date=(date_end or "").strip() or None,
+        image_url=(image or "").strip() or None,
+        contact=(data.get("contact") or "").strip() or None,
+        url_norm=normalize_url(url) or None,
+        phone_digits=only_digits(phone) or None,
+        verified=False,
+        status="pending",
+        source=(source or "").strip() or None,
+    )
+    # Prefer exact coordinates from the caller; otherwise geocode.
+    picked = valid_coords(data.get("lat"), data.get("lng"))
+    if picked:
+        entry.lat, entry.lng = picked
+    else:
+        coords = geocode(entry.city, entry.country)
+        if coords:
+            entry.lat, entry.lng = coords
+    db.session.add(entry)
+    return entry, None
+
+
+def hash_api_key(raw):
+    return hashlib.sha256((raw or "").strip().encode()).hexdigest()
+
+
+def generate_partner_key():
+    """Returns (plaintext, sha256, prefix). The plaintext is shown to the admin once."""
+    raw = "vs_" + secrets.token_urlsafe(24)
+    return raw, hash_api_key(raw), raw[:10]
+
+
+def require_api_key(fn):
+    """Gate for the federation create endpoint: validates the X-API-Key header
+    against the active PartnerKeys and stamps `g.partner`."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        provided = (request.headers.get("X-API-Key") or "").strip()
+        if not provided:
+            return jsonify({"error": "Falta la API key (header X-API-Key)."}), 401
+        key = PartnerKey.query.filter_by(key_sha256=hash_api_key(provided), active=True).first()
+        if not key:
+            return jsonify({"error": "API key inválida o revocada."}), 401
+        g.partner = key
+        key.last_used_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 def seed_if_empty():
     if Resource.query.count() > 0:
         return
@@ -158,6 +291,11 @@ def ensure_schema():
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS phone_digits varchar(64)",
         "CREATE INDEX IF NOT EXISTS ix_resources_url_norm ON resources (url_norm)",
         "CREATE INDEX IF NOT EXISTS ix_resources_phone_digits ON resources (phone_digits)",
+        # Federation API: origin attribution + incremental-sync timestamp.
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS source varchar(120)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS updated_at timestamptz",
+        "UPDATE resources SET updated_at = created_at WHERE updated_at IS NULL",
+        "CREATE INDEX IF NOT EXISTS ix_resources_updated ON resources (updated_at)",
     ]
     for s in stmts:
         db.session.execute(text(s))
@@ -233,8 +371,13 @@ def create_app():
     origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
     CORS(
         app,
-        resources={r"/api/*": {"origins": [o.strip() for o in origins.split(",")]}},
-        allow_headers=["Content-Type", "Authorization"],
+        resources={
+            # Public federation API is open to any origin (no cookies/credentials,
+            # so `*` is safe). Must be listed first so it wins over /api/*.
+            r"/api/v1/*": {"origins": "*"},
+            r"/api/*": {"origins": [o.strip() for o in origins.split(",")]},
+        },
+        allow_headers=["Content-Type", "Authorization", "X-API-Key"],
         methods=["GET", "POST", "PATCH", "OPTIONS"],
     )
 
@@ -363,86 +506,99 @@ def create_app():
         photos = GalleryPhoto.query.order_by(GalleryPhoto.created_at.asc()).all()
         return jsonify({"items": [p.to_dict() for p in photos]})
 
+    # ---- Federation API (v1): stable, documented contract for the partner network.
+    # Reads are public + CORS-open; create requires a partner X-API-Key. ----
+    @app.get("/api/v1")
+    def federation_root():
+        """Discovery document — also handy to fill the network registration form."""
+        return jsonify({
+            "name": Resource.PROVIDER,
+            "version": "1",
+            "provider": Resource.PROVIDER,
+            "categories": list(Resource.CATEGORIES),
+            "endpoints": {
+                "list": "GET /api/v1/resources",
+                "detail": "GET /api/v1/resources/{id}",
+                "create": "POST /api/v1/resources (header X-API-Key)",
+            },
+            "docs": f"{PUBLIC_SITE_URL.rstrip('/')}/API.md",
+        })
+
+    @app.get("/api/v1/resources")
+    @limiter.limit("120 per minute")
+    def federation_list():
+        """Published resources for partners. Filters: category, country, q (text),
+        since (ISO datetime → updated_at >=). Paginated with limit/offset."""
+        q = Resource.query.filter_by(status="published")
+        category = request.args.get("category")
+        if category and category != "todos":
+            q = q.filter_by(category=category)
+        country = request.args.get("country")
+        if country and country != "todos":
+            q = q.filter_by(country=country)
+        term = (request.args.get("q") or "").strip()
+        if term:
+            like = f"%{term}%"
+            q = q.filter(
+                db.or_(
+                    Resource.title.ilike(like),
+                    Resource.description.ilike(like),
+                    Resource.city.ilike(like),
+                    Resource.country.ilike(like),
+                )
+            )
+        since = parse_iso_datetime(request.args.get("since"))
+        if since is not None:
+            q = q.filter(Resource.updated_at >= since)
+        total = q.count()
+        limit = clamp_int(request.args.get("limit"), default=50, lo=1, hi=200)
+        offset = clamp_int(request.args.get("offset"), default=0, lo=0, hi=10_000_000)
+        rows = q.order_by(Resource.updated_at.desc()).limit(limit).offset(offset).all()
+        items = [r.to_feed_dict(PUBLIC_SITE_URL) for r in rows]
+        return jsonify({
+            "items": items,
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "total": total,
+                "returned": len(items),
+                "has_more": offset + len(items) < total,
+            },
+        })
+
+    @app.get("/api/v1/resources/<sid>")
+    @limiter.limit("120 per minute")
+    def federation_detail(sid):
+        entry = db.session.get(Resource, sid)
+        if not entry or entry.status != "published":
+            return jsonify({"error": "No encontrado."}), 404
+        return jsonify(entry.to_feed_dict(PUBLIC_SITE_URL))
+
+    @app.post("/api/v1/resources")
+    @require_api_key
+    @limiter.limit("30 per minute; 300 per hour")
+    def federation_create():
+        """Create a resource from a partner app — enters as `pending` for review."""
+        data = request.get_json(silent=True) or {}
+        entry, err = build_pending_resource(data, source=g.partner.name)
+        if err:
+            return err
+        db.session.commit()
+        broker.publish({"scopes": ["pending"]})
+        return jsonify({
+            "id": entry.id,
+            "status": "pending",
+            "message": "Recibido. Quedó pendiente de revisión.",
+        }), 201
+
     @app.post("/api/submissions")
     @limiter.limit("5 per minute; 20 per hour")
     def create_submission():
-        """Public submission. Stored as a pending resource pending review."""
+        """Public submission from the site form. Stored as a pending resource."""
         data = request.get_json(silent=True) or {}
-        category = (data.get("category") or "donaciones").strip()
-        title = (data.get("title") or "").strip()
-        raw_url = (data.get("url") or "").strip()
-
-        if category not in Resource.CATEGORIES:
-            return jsonify({"error": "Categoría no válida."}), 400
-        if not title:
-            return jsonify({"error": "Agrega un nombre o título para el enlace."}), 400
-        if not raw_url:
-            return jsonify({"error": "Agrega el enlace (URL) o un teléfono de contacto."}), 400
-        # Length caps so a single submission can't store abusive amounts of text.
-        if len(title) > 280:
-            return jsonify({"error": "El título es demasiado largo (máx. 280 caracteres)."}), 400
-        if len(data.get("desc") or "") > 2000:
-            return jsonify({"error": "La descripción es demasiado larga (máx. 2000 caracteres)."}), 400
-        if len(raw_url) > 2048:
-            return jsonify({"error": "El enlace es demasiado largo."}), 400
-        if not valid_iso_date(data.get("date")) or not valid_iso_date(data.get("dateEnd")):
-            return jsonify({"error": "Fecha no válida."}), 400
-        if not valid_date_range(data.get("date"), data.get("dateEnd")):
-            return jsonify({"error": "La fecha de fin no puede ser anterior a la de inicio."}), 400
-        if not valid_image_url(data.get("image")):
-            return jsonify({"error": "La imagen debe ser un enlace http(s) válido."}), 400
-
-        looks_like_phone = bool(re.match(r"^[\d\s()+\-]+$", raw_url)) and not raw_url.lower().startswith("http")
-        url = None if looks_like_phone else raw_url
-        phone = raw_url if looks_like_phone else None
-
-        n = normalize_url(raw_url)
-        digits = only_digits(raw_url)
-
-        # Reject duplicates — but ignore archived (rejected) entries so a rejected
-        # link can be resubmitted. Indexed lookups on the normalized columns instead
-        # of pulling the whole table into Python.
-        if n:
-            dup = Resource.query.filter(
-                Resource.status != "rejected", Resource.url_norm == n
-            ).first()
-            if dup:
-                if dup.status == "pending":
-                    return jsonify({"error": "Este enlace ya fue enviado y está en revisión."}), 409
-                return jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409
-        if digits:
-            if Resource.query.filter(
-                Resource.status != "rejected", Resource.phone_digits == digits
-            ).first():
-                return jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409
-
-        entry = Resource(
-            id=secrets.token_hex(8),
-            category=category,
-            title=title,
-            description=(data.get("desc") or "").strip(),
-            url=url,
-            phone=phone,
-            city=(data.get("city") or "").strip() or None,
-            country=(data.get("country") or "").strip() or None,
-            event_date=(data.get("date") or "").strip() or None,
-            event_end_date=(data.get("dateEnd") or "").strip() or None,
-            image_url=(data.get("image") or "").strip() or None,
-            contact=(data.get("contact") or "").strip() or None,
-            url_norm=normalize_url(url) or None,
-            phone_digits=only_digits(phone) or None,
-            verified=False,
-            status="pending",
-        )
-        # Prefer exact coordinates from the location picker; otherwise geocode.
-        picked = valid_coords(data.get("lat"), data.get("lng"))
-        if picked:
-            entry.lat, entry.lng = picked
-        else:
-            coords = geocode(entry.city, entry.country)
-            if coords:
-                entry.lat, entry.lng = coords
-        db.session.add(entry)
+        entry, err = build_pending_resource(data, source=None)
+        if err:
+            return err
         db.session.commit()
         broker.publish({"scopes": ["pending"]})
         return jsonify({"ok": True, "id": entry.id}), 201
@@ -747,6 +903,41 @@ def create_app():
             ModerationLog.query.order_by(ModerationLog.created_at.desc()).limit(100).all()
         )
         return jsonify({"items": [l.to_dict() for l in logs]})
+
+    # ---- Federation partner API keys (managed from the admin panel) ----
+    @app.get("/api/admin/partner-keys")
+    @require_admin
+    def list_partner_keys():
+        keys = PartnerKey.query.order_by(PartnerKey.created_at.desc()).all()
+        return jsonify({"items": [k.to_dict() for k in keys]})
+
+    @app.post("/api/admin/partner-keys")
+    @require_admin
+    def create_partner_key():
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip()
+        if not name:
+            return jsonify({"error": "Ponle un nombre a la app/socio."}), 400
+        if len(name) > 120:
+            return jsonify({"error": "El nombre es demasiado largo (máx. 120 caracteres)."}), 400
+        raw, sha, prefix = generate_partner_key()
+        key = PartnerKey(name=name, key_sha256=sha, key_prefix=prefix, active=True)
+        db.session.add(key)
+        record_action("apikey-create", label=name, category="red")
+        db.session.commit()
+        # The plaintext key is returned exactly once and never stored.
+        return jsonify({"ok": True, "key": raw, "item": key.to_dict()}), 201
+
+    @app.post("/api/admin/partner-keys/<int:kid>/revoke")
+    @require_admin
+    def revoke_partner_key(kid):
+        key = db.session.get(PartnerKey, kid)
+        if not key:
+            return jsonify({"error": "No encontrado."}), 404
+        key.active = False
+        record_action("apikey-revoke", label=key.name, category="red")
+        db.session.commit()
+        return jsonify({"ok": True, "item": key.to_dict()})
 
     return app
 
