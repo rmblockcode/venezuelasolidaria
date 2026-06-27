@@ -34,6 +34,14 @@ class Resource(db.Model):
     status = db.Column(db.String(20), nullable=False, default="published", index=True)
     contact = db.Column(db.String(280))
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Touched on every write (default + onupdate) so federation partners can sync
+    # incrementally with ?since=. Indexed because the feed orders/filters by it.
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow, index=True
+    )
+    # Name of the partner app that submitted this via the federation API; NULL means
+    # it originated here. Exposed in the public feed so consumers know the origin.
+    source = db.Column(db.String(120))
     # Normalized forms of url/phone, kept in sync on write, so duplicate checks are
     # an indexed lookup instead of scanning the whole table in Python.
     url_norm = db.Column(db.String(2048), index=True)
@@ -73,11 +81,41 @@ class Resource(db.Model):
         """Adds moderation-only fields the public view never exposes."""
         data = self.to_dict()
         data["contact"] = self.contact
+        data["source"] = self.source
         data["created_at"] = self.created_at.isoformat() if self.created_at else None
+        data["updatedAt"] = self.updated_at.isoformat() if self.updated_at else None
         data["moderatedBy"] = self.moderated_by
         data["moderatedAt"] = self.moderated_at.isoformat() if self.moderated_at else None
         data["moderationAction"] = self.moderation_action
         return data
+
+    PROVIDER = "Venezuela Solidaria"
+
+    def to_feed_dict(self, base_url=""):
+        """Stable, documented serialization for the federation API (`/api/v1`).
+        Uses clean field names and an absolute share `link`. Never exposes the
+        private `contact` or any moderation fields."""
+        base = (base_url or "").rstrip("/")
+        return {
+            "id": self.id,
+            "category": self.category,
+            "title": self.title,
+            "description": self.description,
+            "url": self.url,
+            "phone": self.phone,
+            "city": self.city,
+            "country": self.country,
+            "lat": self.lat,
+            "lng": self.lng,
+            "start_date": self.event_date,
+            "end_date": self.event_end_date,
+            "image": self.image_url,
+            "verified": self.verified,
+            "source": self.source or self.PROVIDER,
+            "link": f"{base}/recurso/{self.id}" if base else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class AdminUser(db.Model):
@@ -127,4 +165,31 @@ class ModerationLog(db.Model):
             "title": self.target_title,
             "category": self.target_category,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class PartnerKey(db.Model):
+    """An API key issued to a partner app in the federation network. Only the
+    SHA-256 of the key is stored (the key is high-entropy/random, so a fast hash
+    is appropriate and enables an O(1) lookup). The plaintext key is shown once,
+    at creation, and never again."""
+
+    __tablename__ = "partner_keys"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    key_sha256 = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    key_prefix = db.Column(db.String(16), nullable=False)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    last_used_at = db.Column(db.DateTime(timezone=True))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "prefix": self.key_prefix,
+            "active": self.active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
         }

@@ -194,6 +194,44 @@ export async function unpublish(id: string): Promise<void> {
   if (!res.ok) throw new Error("No se pudo despublicar.");
 }
 
+export interface PartnerKeyDTO {
+  id: number;
+  name: string;
+  prefix: string;
+  active: boolean;
+  created_at?: string | null;
+  last_used_at?: string | null;
+}
+
+export async function listPartnerKeys(): Promise<PartnerKeyDTO[]> {
+  const res = await authFetch(`/api/admin/partner-keys`);
+  if (!res.ok) throw new Error("No se pudieron cargar las claves de API.");
+  const data = await res.json();
+  return data.items as PartnerKeyDTO[];
+}
+
+/** Creates a key. On success returns the plaintext `key` ONCE (never retrievable again). */
+export async function createPartnerKey(
+  name: string
+): Promise<{ ok: boolean; key?: string; item?: PartnerKeyDTO; error?: string }> {
+  const res = await authFetch(`/api/admin/partner-keys`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data.error || "No se pudo crear la clave." };
+  return { ok: true, key: data.key, item: data.item };
+}
+
+export async function revokePartnerKey(id: number): Promise<void> {
+  const res = await authFetch(`/api/admin/partner-keys/${id}/revoke`, { method: "POST" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "No se pudo revocar la clave.");
+  }
+}
+
 /** Partial update — works on pending or published entries. */
 export async function patchSubmission(
   id: string,

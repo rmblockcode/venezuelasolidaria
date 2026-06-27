@@ -22,6 +22,7 @@ import AdminPassword from "./AdminPassword";
 import AdminActivity from "./AdminActivity";
 import AdminGeocode from "./AdminGeocode";
 import AdminGallery from "./AdminGallery";
+import AdminPartnerKeys from "./AdminPartnerKeys";
 import Pagination from "../../components/Pagination";
 
 type ResourceTab = "pending" | "published" | "rejected";
@@ -249,6 +250,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               <h2>Ubicaciones del mapa</h2>
             </div>
             <AdminGeocode onLogout={onLogout} />
+          </section>
+          <section>
+            <div className="admin-section-head">
+              <h2>Red federada · Claves de API</h2>
+            </div>
+            <AdminPartnerKeys onLogout={onLogout} />
           </section>
           <AdminActivity onLogout={onLogout} />
         </div>
