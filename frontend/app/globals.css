@@ -431,3 +431,33 @@ footer.site a{color:var(--brand);font-weight:600}
 .admin-btns .delete{padding:9px 16px;border-radius:10px;border:none;background:color-mix(in srgb,#cf3a2e 12%,var(--surface));color:#a8331f;font-weight:700;font-size:13px;cursor:pointer;transition:filter .12s ease}
 .admin-btns .delete:hover{filter:brightness(.97)}
 .admin-btns button:disabled{opacity:.55;cursor:default}
+
+/* ---- admin responsive (móvil) ---- */
+@media (max-width:640px){
+  .admin-login{padding:16px}
+  .admin-wrap{padding:22px 16px 64px}
+  .admin-head{margin-bottom:18px}
+  .admin-head h1{font-size:23px}
+  .admin-head-actions{flex-wrap:wrap}
+  /* pestañas: scroll horizontal en lugar de desbordar */
+  .admin-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .admin-tabs::-webkit-scrollbar{display:none}
+  .admin-tab{flex:0 0 auto;white-space:nowrap;padding:10px 13px;font-size:13px}
+  /* filtros: búsqueda a ancho completo */
+  .admin-filters{gap:8px}
+  .admin-search{min-width:0;flex:1 1 100%}
+  .admin-verselect{flex:1 1 100%}
+  /* registro: imagen+texto arriba, acciones a ancho completo debajo */
+  .admin-row{gap:12px;padding:16px}
+  .admin-row-main{min-width:0}
+  .admin-row-actions{min-width:0;width:100%}
+  .admin-btns{flex-wrap:wrap}
+  .admin-btns button{flex:1 1 auto;text-align:center}
+  /* alta de administradores: campos apilados */
+  .admin-userform-fields{flex-direction:column;align-items:stretch}
+  .admin-userform-fields input{min-width:0;width:100%}
+  .admin-userform-fields .btn-submit{width:100%}
+  /* fila de usuario: permitir que el botón baje */
+  .admin-userrow{flex-wrap:wrap}
+  .admin-section-head{flex-wrap:wrap}
+}
