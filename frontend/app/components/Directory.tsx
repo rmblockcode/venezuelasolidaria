@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CategoryKey, Resource, ThemeKey } from "../lib/types";
@@ -13,10 +13,10 @@ import Card from "./Card";
 import ListItem from "./ListItem";
 import HeroGallery from "./HeroGallery";
 import AddModal from "./AddModal";
-import Pagination from "./Pagination";
 
 const THEME_KEY = "vzla-dir-theme";
-const PAGE_SIZES = [10, 50, 100];
+// Cantidad de tarjetas que se cargan por tanda al hacer scroll (infinite scroll).
+const CHUNK = 12;
 
 // Leaflet needs `window`, so the map is client-only.
 const MapView = dynamic(() => import("./MapView"), {
@@ -36,10 +36,10 @@ export default function Directory() {
   const [timeframe, setTimeframe] = useState<Timeframe>("semana");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
+  const [visible, setVisible] = useState(CHUNK);
   const [view, setView] = useState<"tarjetas" | "lista" | "mapa">("tarjetas");
   const [showAdd, setShowAdd] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
@@ -120,8 +120,8 @@ export default function Directory() {
     );
   }, [resources, query, cat, pais, fDesde, fHasta, dateActive]);
 
-  const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
-  const pageItems = list.slice((page - 1) * pageSize, page * pageSize);
+  const shown = list.slice(0, visible);
+  const hasMore = visible < list.length;
   const locatedCount = list.filter(
     (i) => typeof i.lat === "number" && typeof i.lng === "number"
   ).length;
@@ -143,15 +143,27 @@ export default function Directory() {
     setHasta("");
   }
 
-  // Back to page 1 whenever the filters change.
+  // Reset to the first tanda whenever the filters or view change.
   useEffect(() => {
-    setPage(1);
-  }, [query, cat, pais, timeframe, desde, hasta, pageSize]);
+    setVisible(CHUNK);
+  }, [query, cat, pais, timeframe, desde, hasta, view]);
 
-  // Keep the page in range after live (SSE) updates shrink the list.
+  // Infinite scroll: load the next tanda when the sentinel enters the viewport.
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    if (view === "mapa" || !hasMore) return;
+    const el = sentinel.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setVisible((v) => v + CHUNK);
+      },
+      { rootMargin: "400px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+    // `visible` is included so the observer re-checks after each tanda loads
+    // (if the sentinel is still on screen, the next tanda loads too).
+  }, [view, hasMore, list.length, visible]);
 
   return (
     <div data-theme={theme}>
@@ -314,18 +326,6 @@ export default function Directory() {
             <span>Verifica siempre antes de donar. La marca ✓ significa revisado por el equipo.</span>
           </div>
           <div className="statbar-controls">
-            {view !== "mapa" && (
-              <label className="pagesize">
-                Mostrar
-                <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-                  {PAGE_SIZES.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
             <div className="viewtoggle">
             <button
               className={view === "tarjetas" ? "active" : ""}
@@ -386,20 +386,30 @@ export default function Directory() {
         ) : view === "lista" ? (
           <>
             <div className="dir-list">
-              {pageItems.map((item) => (
+              {shown.map((item) => (
                 <ListItem key={item.id} item={item} />
               ))}
             </div>
-            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+            {hasMore && (
+              <div ref={sentinel} className="scroll-sentinel">
+                <span className="dots" aria-hidden />
+                Cargando más…
+              </div>
+            )}
           </>
         ) : (
           <>
             <div className="grid">
-              {pageItems.map((item) => (
+              {shown.map((item) => (
                 <Card key={item.id} item={item} />
               ))}
             </div>
-            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+            {hasMore && (
+              <div ref={sentinel} className="scroll-sentinel">
+                <span className="dots" aria-hidden />
+                Cargando más…
+              </div>
+            )}
           </>
         )}
       </section>

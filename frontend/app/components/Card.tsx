@@ -7,7 +7,6 @@ import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
 import { resourcePath, shareResource } from "../lib/share";
-import ExpandableText from "./ExpandableText";
 
 export default function Card({ item }: { item: Resource }) {
   const [copied, setCopied] = useState(false);
@@ -79,32 +78,37 @@ export default function Card({ item }: { item: Resource }) {
           {item.title}
         </Link>
       </h3>
-      {item.desc && <ExpandableText text={item.desc} lines={4} className="desc" />}
-      {meta && (
-        <div className="meta">
-          <span className="pin" />
-          {meta}
-        </div>
-      )}
-      <div className="actions">
-        {(item.url || item.phone) && (
-          <a
-            className="primary"
-            href={href}
-            target={isPhone ? undefined : "_blank"}
-            rel="noopener noreferrer"
-          >
-            {actionLabel}
-          </a>
+      {item.desc && <p className="desc card-desc">{item.desc}</p>}
+      <Link href={resourcePath(item.id)} className="card-detail">
+        Ver más →
+      </Link>
+      <div className="card-foot">
+        {meta && (
+          <div className="meta">
+            <span className="pin" />
+            {meta}
+          </div>
         )}
-        {copyValue && (
-          <button className="copy" onClick={onCopy}>
-            {copied ? "Copiado ✓" : "Copiar"}
+        <div className="actions">
+          {(item.url || item.phone) && (
+            <a
+              className="primary"
+              href={href}
+              target={isPhone ? undefined : "_blank"}
+              rel="noopener noreferrer"
+            >
+              {actionLabel}
+            </a>
+          )}
+          {copyValue && (
+            <button className="copy" onClick={onCopy}>
+              {copied ? "Copiado ✓" : "Copiar"}
+            </button>
+          )}
+          <button className="copy" onClick={onShare} title="Compartir enlace">
+            {shared ? "Enlace ✓" : "↗ Compartir"}
           </button>
-        )}
-        <button className="copy" onClick={onShare} title="Compartir enlace">
-          {shared ? "Enlace ✓" : "↗ Compartir"}
-        </button>
+        </div>
       </div>
 
       {zoom &&

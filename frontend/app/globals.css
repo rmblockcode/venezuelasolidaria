@@ -227,13 +227,23 @@ a.post-loc:hover{text-decoration:underline;text-underline-offset:2px}
 .unverified{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:11px;line-height:1;color:var(--muted);background:var(--surface-2);padding:4px 8px;border-radius:999px;border:1px solid var(--line)}
 .card h3{margin:0;font-family:var(--font-serif),serif;font-weight:600;font-size:19px;line-height:1.25;color:var(--ink)}
 .card .desc{margin:0;font-size:13.5px;line-height:1.55;color:var(--muted)}
+/* moderate clamp (~3 líneas); el texto completo se ve en el modal de detalle */
+.card-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-detail{align-self:flex-start;color:var(--brand);font:700 12.5px/1 'Hanken Grotesk';text-decoration:none;margin-top:-2px}
+.card-detail:hover{text-decoration:underline;text-underline-offset:2px}
+/* footer pinned to the bottom → todas las tarjetas quedan de la misma altura */
+.card-foot{margin-top:auto;display:flex;flex-direction:column;gap:11px}
 .card .meta{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);font-weight:600}
 .card .meta .pin{width:7px;height:7px;border-radius:50%;background:var(--cat);display:inline-block}
-.card .actions{display:flex;gap:8px;align-items:center;margin-top:3px}
+.card .actions{display:flex;gap:8px;align-items:center}
 .card .actions a.primary{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:10px;background:var(--cat);color:#fff;font-weight:700;font-size:13px;line-height:1;text-decoration:none;transition:filter .12s ease}
 .card .actions a.primary:hover{filter:brightness(1.07)}
 .card .actions button.copy{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:13px;line-height:1;cursor:pointer;transition:background .12s ease}
 .card .actions button.copy:hover{background:var(--surface-2)}
+/* infinite scroll sentinel + spinner */
+.scroll-sentinel{display:flex;align-items:center;justify-content:center;gap:9px;padding:26px 0 10px;font-size:13px;font-weight:600;color:var(--muted)}
+.scroll-sentinel .dots{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--brand);animation:vzSpin .7s linear infinite}
+@keyframes vzSpin{to{transform:rotate(360deg)}}
 
 /* footer */
 footer.site{border-top:1px solid var(--line);background:var(--surface)}
