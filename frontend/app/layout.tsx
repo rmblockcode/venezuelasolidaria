@@ -23,10 +23,19 @@ export const metadata: Metadata = {
     "Directorio centralizado de recaudaciones, contactos de emergencia, páginas comunitarias y jornadas solidarias tras los sismos en Venezuela.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+  modal,
+}: {
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
   return (
     <html lang="es" className={`${hanken.variable} ${newsreader.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {modal}
+      </body>
     </html>
   );
 }

@@ -201,7 +201,6 @@ section.grid-sec{padding:24px 24px 72px}
 /* shareable post: title link + detail modal page */
 .post-title-link{color:inherit;text-decoration:none;cursor:pointer}
 .post-title-link:hover{text-decoration:underline;text-underline-offset:2px}
-.recurso-page{min-height:100vh;background:var(--bg)}
 .post-modal{max-width:600px}
 .post-modal .post-x{position:absolute;top:14px;right:16px}
 .post-cover{width:calc(100% + 56px);margin:-28px -28px 16px;max-height:280px;object-fit:cover;border-radius:20px 20px 0 0;cursor:zoom-in;background:var(--surface-2)}

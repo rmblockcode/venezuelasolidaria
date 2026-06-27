@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { fetchResource } from "../../lib/api";
 import { CATS } from "../../lib/constants";
+import Directory from "../../components/Directory";
 import PostModal from "../../components/PostModal";
 
 export async function generateMetadata({
@@ -37,9 +38,12 @@ export async function generateMetadata({
 
 export default async function RecursoPage({ params }: { params: { id: string } }) {
   const item = await fetchResource(params.id);
+  // Enlace abierto en frío (p. ej. desde redes): mostramos el directorio
+  // completo detrás y el post en un modal encima, igual que dentro de la app.
   return (
-    <div data-theme="esperanza" className="recurso-page">
+    <>
+      <Directory />
       <PostModal resource={item} />
-    </div>
+    </>
   );
 }
