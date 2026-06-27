@@ -27,6 +27,15 @@ export default function PostModal({ resource }: { resource: Resource | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom]);
 
+  // Lock background scroll while the modal is open so nothing moves behind it.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   if (!resource) {
     return (
       <div className="overlay" onClick={() => router.push("/")}>
@@ -50,9 +59,14 @@ export default function PostModal({ resource }: { resource: Resource | null }) {
   const isPhone = !item.url && !!item.phone;
   const href = isPhone ? `tel:${item.phone}` : item.url || "#";
   const actionLabel = isPhone ? "Llamar" : c.action;
-  const meta = [item.city, item.country, formatEventRange(item.date, item.dateEnd)]
-    .filter(Boolean)
-    .join("  ·  ");
+  const location = [item.city, item.country].filter(Boolean).join(", ");
+  const dateText = formatEventRange(item.date, item.dateEnd);
+  // Prefer exact coordinates for the map link; fall back to the text location.
+  const mapsQuery =
+    item.lat != null && item.lng != null ? `${item.lat},${item.lng}` : location;
+  const mapsUrl = mapsQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`
+    : "";
 
   async function onShare() {
     const copied = await shareResource(item.id, item.title);
@@ -64,7 +78,7 @@ export default function PostModal({ resource }: { resource: Resource | null }) {
 
   return (
     <div
-      className="overlay"
+      className="overlay post-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
       }}
@@ -85,36 +99,60 @@ export default function PostModal({ resource }: { resource: Resource | null }) {
           />
         )}
 
-        <div className="post-top">
-          <span className="tag">{c.label}</span>
-          {item.verified ? (
-            <span className="verified">✓ Verificado</span>
-          ) : (
-            <span className="unverified">Sin verificar</span>
-          )}
-        </div>
+        <div className="post-body">
+          <div className="post-top">
+            <span className="tag">{c.label}</span>
+            {item.verified ? (
+              <span className="verified">✓ Verificado</span>
+            ) : (
+              <span className="unverified">Sin verificar</span>
+            )}
+          </div>
 
-        <h2 className="post-title">{item.title}</h2>
-        {meta && <p className="post-meta">{meta}</p>}
-        {item.desc && <p className="post-desc">{item.desc}</p>}
-
-        <div className="post-actions">
-          {(item.url || item.phone) && (
-            <a
-              className="primary"
-              href={href}
-              target={isPhone ? undefined : "_blank"}
-              rel="noopener noreferrer"
-            >
-              {actionLabel}
-            </a>
+          <h2 className="post-title">{item.title}</h2>
+          {(location || dateText) && (
+            <p className="post-meta">
+              {location &&
+                (mapsUrl ? (
+                  <a
+                    className="post-loc"
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Ver en el mapa"
+                  >
+                    <span className="pin" />
+                    {location}
+                  </a>
+                ) : (
+                  <span className="post-loc">
+                    <span className="pin" />
+                    {location}
+                  </span>
+                ))}
+              {dateText && <span>{dateText}</span>}
+            </p>
           )}
-          <button className="share" onClick={onShare}>
-            {shared ? "Enlace copiado ✓" : "↗ Compartir"}
-          </button>
-          <button className="ghost-link" onClick={close}>
-            Volver al directorio
-          </button>
+          {item.desc && <p className="post-desc">{item.desc}</p>}
+
+          <div className="post-actions">
+            {(item.url || item.phone) && (
+              <a
+                className="primary"
+                href={href}
+                target={isPhone ? undefined : "_blank"}
+                rel="noopener noreferrer"
+              >
+                {actionLabel}
+              </a>
+            )}
+            <button className="share" onClick={onShare}>
+              {shared ? "Enlace copiado ✓" : "↗ Compartir"}
+            </button>
+            <button className="ghost-link" onClick={close}>
+              Volver al directorio
+            </button>
+          </div>
         </div>
       </div>
 

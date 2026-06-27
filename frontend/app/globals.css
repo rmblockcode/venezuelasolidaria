@@ -201,12 +201,18 @@ section.grid-sec{padding:24px 24px 72px}
 /* shareable post: title link + detail modal page */
 .post-title-link{color:inherit;text-decoration:none;cursor:pointer}
 .post-title-link:hover{text-decoration:underline;text-underline-offset:2px}
-.post-modal{max-width:600px}
-.post-modal .post-x{position:absolute;top:14px;right:16px}
-.post-cover{width:calc(100% + 56px);margin:-28px -28px 16px;max-height:280px;object-fit:cover;border-radius:20px 20px 0 0;cursor:zoom-in;background:var(--surface-2)}
+/* detail modal sized to always fit the viewport (no page scroll) */
+.post-overlay{align-items:center;padding:24px 16px}
+.post-modal{max-width:600px;padding:0;position:relative;display:flex;flex-direction:column;max-height:calc(100dvh - 48px);overflow:hidden}
+.post-modal .post-x{position:absolute;top:12px;right:12px;z-index:2;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(20,16,10,.18);padding:0}
+.post-cover{width:100%;max-height:46vh;object-fit:contain;background:#16120c;cursor:zoom-in;flex-shrink:0;border-radius:20px 20px 0 0}
+.post-body{padding:22px 26px 24px;overflow-y:auto;min-height:0}
 .post-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.post-title{font-family:var(--font-serif),serif;font-weight:600;font-size:24px;line-height:1.2;color:var(--ink);margin:0 0 6px}
-.post-meta{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 12px}
+.post-title{font-family:var(--font-serif),serif;font-weight:600;font-size:24px;line-height:1.2;color:var(--ink);margin:0 0 8px}
+.post-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13px;color:var(--muted);font-weight:600;margin:0 0 14px}
+.post-loc{display:inline-flex;align-items:center;gap:5px;color:var(--brand);text-decoration:none}
+a.post-loc:hover{text-decoration:underline;text-underline-offset:2px}
+.post-loc .pin{width:9px;height:9px;border-radius:50%;background:var(--cat);box-shadow:0 0 0 3px color-mix(in srgb,var(--cat) 22%,transparent)}
 .post-desc{font-size:15px;line-height:1.6;color:var(--ink);margin:0 0 18px;white-space:pre-line}
 .post-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .post-actions a.primary{display:inline-flex;align-items:center;gap:6px;padding:11px 18px;border-radius:11px;background:var(--cat);color:#fff;font:700 14px/1 'Hanken Grotesk';text-decoration:none;transition:filter .12s ease}
