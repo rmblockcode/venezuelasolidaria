@@ -197,6 +197,25 @@ section.grid-sec{padding:24px 24px 72px}
 .lightbox img{max-width:min(96vw,1100px);max-height:92vh;object-fit:contain;border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.5);cursor:default}
 .lightbox-close{position:fixed;top:16px;right:20px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .lightbox-close:hover{background:rgba(255,255,255,.25)}
+
+/* shareable post: title link + detail modal page */
+.post-title-link{color:inherit;text-decoration:none;cursor:pointer}
+.post-title-link:hover{text-decoration:underline;text-underline-offset:2px}
+.recurso-page{min-height:100vh;background:var(--bg)}
+.post-modal{max-width:600px}
+.post-modal .post-x{position:absolute;top:14px;right:16px}
+.post-cover{width:calc(100% + 56px);margin:-28px -28px 16px;max-height:280px;object-fit:cover;border-radius:20px 20px 0 0;cursor:zoom-in;background:var(--surface-2)}
+.post-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.post-title{font-family:var(--font-serif),serif;font-weight:600;font-size:24px;line-height:1.2;color:var(--ink);margin:0 0 6px}
+.post-meta{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 12px}
+.post-desc{font-size:15px;line-height:1.6;color:var(--ink);margin:0 0 18px;white-space:pre-line}
+.post-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.post-actions a.primary{display:inline-flex;align-items:center;gap:6px;padding:11px 18px;border-radius:11px;background:var(--cat);color:#fff;font:700 14px/1 'Hanken Grotesk';text-decoration:none;transition:filter .12s ease}
+.post-actions a.primary:hover{filter:brightness(1.07)}
+.post-actions .share{padding:11px 16px;border-radius:11px;border:1px solid var(--line);background:transparent;color:var(--ink);font:700 13.5px/1 'Hanken Grotesk';cursor:pointer}
+.post-actions .share:hover{background:var(--surface-2)}
+.post-actions .ghost-link{margin-left:auto;background:none;border:none;color:var(--muted);font:600 13px/1 'Hanken Grotesk';cursor:pointer}
+.post-actions .ghost-link:hover{color:var(--ink)}
 .card .toprow{display:flex;align-items:center;gap:8px}
 .tag{display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-weight:700;font-size:11.5px;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:var(--cat);background:color-mix(in srgb,var(--cat) 14%,var(--surface))}
 .verified{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:11.5px;line-height:1;color:#2f8a6b}

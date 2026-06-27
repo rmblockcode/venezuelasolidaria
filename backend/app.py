@@ -307,6 +307,14 @@ def create_app():
         items = q.order_by(Resource.created_at.desc()).all()
         return jsonify({"items": [r.to_dict() for r in items]})
 
+    @app.get("/api/resources/<sid>")
+    def get_resource(sid):
+        """A single published resource — for shareable direct links."""
+        entry = db.session.get(Resource, sid)
+        if not entry or entry.status != "published":
+            return jsonify({"error": "No encontrado."}), 404
+        return jsonify(entry.to_dict())
+
     @app.get("/api/gallery")
     def list_gallery():
         """Public hero-carousel photos, oldest first."""

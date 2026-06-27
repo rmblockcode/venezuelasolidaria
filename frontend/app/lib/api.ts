@@ -9,6 +9,18 @@ export async function fetchResources(): Promise<Resource[]> {
   return data.items as Resource[];
 }
 
+export async function fetchResource(id: string): Promise<Resource | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/resources/${encodeURIComponent(id)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Resource;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchGallery(): Promise<GalleryPhoto[]> {
   const res = await fetch(`${API_BASE}/api/gallery`, { cache: "no-store" });
   if (!res.ok) return [];

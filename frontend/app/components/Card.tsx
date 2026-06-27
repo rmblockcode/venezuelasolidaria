@@ -2,13 +2,16 @@
 
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
+import { resourcePath, shareResource } from "../lib/share";
 import ExpandableText from "./ExpandableText";
 
 export default function Card({ item }: { item: Resource }) {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [zoom, setZoom] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,6 +45,13 @@ export default function Card({ item }: { item: Resource }) {
     timer.current = setTimeout(() => setCopied(false), 1500);
   }
 
+  async function onShare() {
+    if (await shareResource(item.id, item.title)) {
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    }
+  }
+
   return (
     <div className="card" style={{ "--cat": c.color } as React.CSSProperties}>
       {item.image && (
@@ -64,7 +74,11 @@ export default function Card({ item }: { item: Resource }) {
           <span className="unverified">Sin verificar</span>
         )}
       </div>
-      <h3>{item.title}</h3>
+      <h3>
+        <Link href={resourcePath(item.id)} className="post-title-link">
+          {item.title}
+        </Link>
+      </h3>
       {item.desc && <ExpandableText text={item.desc} lines={4} className="desc" />}
       {meta && (
         <div className="meta">
@@ -88,6 +102,9 @@ export default function Card({ item }: { item: Resource }) {
             {copied ? "Copiado ✓" : "Copiar"}
           </button>
         )}
+        <button className="copy" onClick={onShare} title="Compartir enlace">
+          {shared ? "Enlace ✓" : "↗ Compartir"}
+        </button>
       </div>
 
       {zoom &&

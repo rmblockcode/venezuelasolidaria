@@ -1,41 +1,73 @@
 # Venezuela Solidaria — Directorio de ayuda
 
-Directorio centralizado de recaudaciones, contactos de emergencia, páginas comunitarias y
-jornadas solidarias tras los sismos en Venezuela.
+Directorio comunitario para centralizar la ayuda tras los sismos en Venezuela: recaudaciones,
+contactos de emergencia, páginas creadas por la comunidad y jornadas/puntos de acopio. Todo
+verificado por un equipo de moderación, sin fines de lucro.
 
-Implementación full-stack del prototipo `Directorio Venezuela.dc.html`:
+## Stack
 
-- **Frontend:** Next.js 14 (App Router, TypeScript)
-- **Backend:** Flask (API REST)
-- **Base de datos:** PostgreSQL
+| Capa | Tecnología | Despliegue |
+| --- | --- | --- |
+| Frontend | Next.js 14 (App Router, TypeScript) | Vercel |
+| Backend | Flask (API REST) + SQLAlchemy | Render (gunicorn + gevent) |
+| Base de datos | PostgreSQL | Neon |
+| Imágenes | Cloudinary (subida firmada) | — |
+| Mapa / geocodificación | OpenStreetMap (Leaflet, Nominatim) + Photon | — |
+
+## Funcionalidades
+
+**Directorio público**
+- Búsqueda por nombre, ciudad o palabra clave.
+- Filtros: **categoría** (Donaciones, Directorios, Emergencia, Acopio) con contadores, **país**
+  (menú desplegable), y **fecha** con presets (Hoy / Esta semana / Este mes / Rango). El filtro de
+  fecha solo acota eventos con fecha; los recursos sin fecha siempre se muestran.
+- **Tres vistas** conmutables: **Tarjetas**, **Lista** (filas compactas) y **Mapa** (pines por
+  ubicación, estilo Airbnb, con clústeres y popups).
+- **Paginación** con selector de cantidad por página (10 / 50 / 100).
+- Descripciones largas con **"Ver más / Ver menos"**; imágenes ampliables en **lightbox**.
+- **Galería/carrusel** de fotos en la portada (autoplay + swipe), gestionable desde el admin.
+- 3 temas visuales (Esperanza, Sereno, Tricolor) con persistencia en `localStorage`.
+- Formulario "Agregar al directorio" con autocompletado de **ubicación**, fecha de inicio/fin,
+  imagen opcional, validación y detección de duplicados.
+
+**Moderación (panel `/admin`)**
+- Login con usuario + contraseña (JWT). Pestañas: **Pendientes**, **Publicados**, **Rechazados**,
+  **Galería**, **Administradores**.
+- Aprobar / rechazar / editar / despublicar; **borrado lógico** (los rechazados se archivan y se
+  pueden recuperar) y **borrado definitivo**.
+- **Atribución por post**: cada registro muestra quién y cuándo lo aprobó/rechazó.
+- **Auditoría** completa de todas las acciones de admin.
+- Gestión de administradores, cambio de contraseña, y botón para rellenar ubicaciones del mapa.
+
+**Infraestructura**
+- Actualización en **tiempo real** (SSE) de la home y el panel.
+- **Protección contra abuso/DoS** (rate limiting, límites de tamaño, etc.).
+- Auto-migración del esquema al arrancar (no requiere migraciones manuales).
+- Página de **política de privacidad** (`/privacidad`).
+
+## Estructura
 
 ```
 .
-├── backend/    # API Flask + modelos SQLAlchemy
-├── frontend/   # App Next.js
-└── docker-compose.yml   # PostgreSQL
+├── backend/    # API Flask, modelos SQLAlchemy, geocodificación, SSE
+├── frontend/   # App Next.js (App Router)
+└── docker-compose.yml   # PostgreSQL para desarrollo
 ```
 
-## Requisitos
+## Desarrollo local
 
-- Python 3.10+
-- Node.js 18+
-- Docker (para Postgres) — o un Postgres propio
+Requisitos: **Python 3.12+**, **Node.js 18+**, **pnpm**, y Docker (para Postgres) o un Postgres propio.
 
-## 1. Base de datos
+### 1. Base de datos
 
 ```bash
 docker compose up -d db
 ```
 
-Esto levanta Postgres en `localhost:5432` (usuario `vzla`, contraseña `vzla`, base
-`venezuelasolidaria`). Si usas tu propio Postgres, ajusta `DATABASE_URL` en `backend/.env`.
+Levanta Postgres en `localhost:5432` (usuario `vzla`, contraseña `vzla`, base `venezuelasolidaria`).
+Si usas tu propio Postgres, ajusta `DATABASE_URL` en `backend/.env`.
 
-> **Esquema:** en una BD vacía las tablas se crean solas al arrancar el backend. En una BD que ya
-> existía hay que añadir la columna de fecha de fin una sola vez:
-> `ALTER TABLE resources ADD COLUMN IF NOT EXISTS event_end_date varchar(60);`
-
-## 2. Backend (Flask)
+### 2. Backend (Flask)
 
 ```bash
 cd backend
@@ -45,35 +77,11 @@ cp .env.example .env          # ajusta si hace falta
 python app.py
 ```
 
-La API queda en `http://localhost:5001`. Al arrancar crea las tablas y, si están vacías,
-inserta los datos de ejemplo (seed).
+API en `http://localhost:5001`. Al arrancar crea/actualiza las tablas (ver *Esquema*) e inserta los
+datos de ejemplo (seed) si la BD está vacía. Crea también el admin inicial desde `ADMIN_EMAIL` /
+`ADMIN_PASSWORD`.
 
-### Endpoints
-
-**Públicos:**
-
-| Método | Ruta                | Descripción                                              |
-| ------ | ------------------- | ------------------------------------------------------- |
-| GET    | `/api/health`       | Estado del servicio                                     |
-| GET    | `/api/resources`    | Recursos publicados. Filtros: `?category=` y `?country=`|
-| POST   | `/api/submissions`  | Envía un recurso nuevo (queda en estado `pending`)      |
-| GET    | `/api/stream`       | SSE: señales de cambios en tiempo real (sin datos)      |
-
-**Admin / moderación** (requieren `Authorization: Bearer <jwt>`):
-
-| Método | Ruta                                      | Descripción                                  |
-| ------ | ----------------------------------------- | -------------------------------------------- |
-| POST   | `/api/admin/login`                        | `{email, password}` → `{token}`              |
-| GET    | `/api/admin/submissions?status=pending`   | Lista por estado (def. `pending`)            |
-| POST   | `/api/admin/submissions/<id>/approve`     | `{verified?}` → publica el recurso           |
-| POST   | `/api/admin/submissions/<id>/reject`      | Descarta (elimina) el envío                  |
-| POST   | `/api/admin/submissions/<id>/unpublish`   | Devuelve un publicado a `pending`            |
-| PATCH  | `/api/admin/submissions/<id>`             | Edita campos / `verified` (pendiente o publicado) |
-
-Un envío se guarda como recurso `pending` y no aparece en el directorio hasta que un moderador lo
-aprueba (`published`).
-
-## 3. Frontend (Next.js)
+### 3. Frontend (Next.js)
 
 ```bash
 cd frontend
@@ -82,101 +90,145 @@ cp .env.local.example .env.local   # apunta a la API
 pnpm dev
 ```
 
-App en `http://localhost:3000`. La variable `NEXT_PUBLIC_API_BASE` define la URL del backend.
+App en `http://localhost:3000`. `NEXT_PUBLIC_API_BASE` define la URL del backend.
 
-## Moderación / verificación
+## Variables de entorno
 
-El panel de moderación vive en **`http://localhost:3000/admin`** (no enlazado desde la home).
+**Backend (`backend/.env`)**
 
-1. El admin inicial se crea en el primer arranque del backend a partir de `ADMIN_EMAIL` y
-   `ADMIN_PASSWORD` (ver `backend/.env`). La contraseña se guarda hasheada.
-2. Entra a `/admin`, inicia sesión con ese correo y contraseña.
-3. El panel tiene dos pestañas:
-   - **Pendientes**: envíos por revisar (con el contacto de quien los envió). Por cada uno:
-     **Aprobar** (lo publica, ✓ verificado por defecto; el toggle lo controla), **Editar** o **Rechazar**.
-   - **Publicados**: lo que ya está en el directorio. Por cada uno: **Editar**, **Despublicar**
-     (lo regresa a pendientes y lo quita de la home) o **Eliminar**, además de un toggle de
-     verificación que se guarda al instante.
-4. Lo aprobado aparece de inmediato en la home.
+| Variable | Descripción |
+| --- | --- |
+| `DATABASE_URL` | URL de Postgres. Acepta `postgres://`/`postgresql://`; se normaliza a psycopg3. |
+| `CORS_ORIGINS` | Orígenes permitidos, separados por coma (la URL del frontend). |
+| `PORT` | Puerto del backend (def. 5001). |
+| `SECRET_KEY` | Firma de los JWT de admin (largo y aleatorio en producción). |
+| `JWT_EXP_HOURS` | Vigencia del token de sesión (def. 12). |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Admin inicial (se crea al primer arranque; clave hasheada). |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Credenciales de Cloudinary (el **secret vive solo aquí**). |
+| `CLOUDINARY_FOLDER` | Carpeta donde se guardan las imágenes (p. ej. `VenezuelaSolidaria`). |
+| `RATELIMIT_DEFAULT` | Límite por IP global (def. `240 per hour`). |
+| `RATELIMIT_STORAGE_URI` | `memory://` (1 proceso) o `redis://…` (multi-proceso). |
+| `MAX_CONTENT_LENGTH` | Tamaño máx. de body en bytes (def. 64 KB). |
+| `PROXY_HOPS` | Saltos de proxy confiables (1+ detrás de Render/nginx para IP real). |
+| `SSE_HEARTBEAT_SECONDS` | Latido del stream SSE (def. 20). |
 
-La autenticación usa **JWT** (`Authorization: Bearer`), no cookies, para funcionar entre dominios
+**Frontend (`frontend/.env.local`)**
+
+| Variable | Descripción |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE` | URL pública del backend. |
+
+> El frontend **no** necesita credenciales de Cloudinary: pide una firma al backend
+> (`POST /api/cloudinary/signature`) y sube directo a Cloudinary con esa firma.
+
+## Esquema y migraciones
+
+No hay framework de migraciones. Al arrancar:
+- `db.create_all()` crea las **tablas** que falten.
+- `ensure_schema()` añade columnas nuevas con `ALTER TABLE … ADD COLUMN IF NOT EXISTS`
+  (idempotente). Cubre `event_end_date`, `image_url`, `lat`, `lng`, `moderated_by`, `moderated_at`,
+  `moderation_action`. **Se auto-actualiza en cada deploy**, sin pasos manuales.
+
+## Moderación / panel admin
+
+`http://localhost:3000/admin` (no enlazado desde la home). Login con `ADMIN_EMAIL` /
+`ADMIN_PASSWORD`. La autenticación usa **JWT** por header (no cookies), para funcionar entre dominios
 cuando frontend y backend se despliegan por separado.
+
+Pestañas:
+- **Pendientes** — envíos por revisar (con el contacto de quien los envió). Aprobar / Editar / Rechazar.
+- **Publicados** — lo que está en el directorio. Editar / Despublicar / Eliminar (archiva) + toggle de verificación.
+- **Rechazados** — archivo (borrado lógico). Recuperar (Aprobar) / Editar / **Eliminar definitivamente**.
+- **Galería** — subir/eliminar fotos del carrusel de la portada.
+- **Administradores** — gestión de admins, cambio de contraseña, rellenar ubicaciones del mapa, y la **Auditoría**.
+
+Al aprobar/rechazar/despublicar, el post guarda **quién y cuándo** lo moderó (visible en su fila). Un
+envío rechazado se archiva como `rejected`; el dedup de envíos lo ignora (se puede reenviar).
+
+## Endpoints
+
+**Públicos**
+
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| GET | `/api/health` | Estado del servicio |
+| GET | `/api/resources` | Recursos publicados. Filtros: `?category=` y `?country=` |
+| GET | `/api/gallery` | Fotos del carrusel de portada |
+| POST | `/api/submissions` | Crea un envío (queda `pending`) |
+| POST | `/api/cloudinary/signature` | Firma para subir imágenes a Cloudinary (rate-limitado) |
+| GET | `/api/stream` | SSE: señales de cambios en tiempo real (sin datos) |
+
+**Admin** (requieren `Authorization: Bearer <jwt>`)
+
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| POST | `/api/admin/login` | `{email, password}` → `{token}` |
+| GET | `/api/admin/submissions?status=` | Lista por estado: `pending` (def.) / `published` / `rejected` |
+| POST | `/api/admin/submissions/<id>/approve` | `{verified?}` → publica |
+| POST | `/api/admin/submissions/<id>/reject` | Archiva (borrado lógico → `rejected`) |
+| POST | `/api/admin/submissions/<id>/unpublish` | Devuelve un publicado a `pending` |
+| POST | `/api/admin/submissions/<id>/purge` | Borrado definitivo de la BD |
+| PATCH | `/api/admin/submissions/<id>` | Edita campos / `verified` / ubicación |
+| GET / POST | `/api/admin/admins` | Lista / crea administradores |
+| POST | `/api/admin/admins/<id>/delete` | Elimina un administrador |
+| POST | `/api/admin/change-password` | Cambia la contraseña propia |
+| POST | `/api/admin/geocode-missing` | Rellena coordenadas faltantes (backfill) |
+| GET | `/api/admin/activity` | Auditoría de acciones |
+| POST | `/api/admin/gallery` / `/api/admin/gallery/<id>/delete` | Agrega / elimina foto de galería |
+
+## Mapa y ubicaciones
+
+- Vista de **mapa** con **Leaflet + OpenStreetMap** (gratis, sin API key), con clustering y popups.
+- Al enviar/editar, la **ubicación** se elige con autocompletado (**Photon**, OSM) que devuelve
+  ciudad/país + **coordenadas exactas**. Si no, el backend geocodifica con **Nominatim** (normaliza
+  abreviaturas como "Rep. Dominicana" y cae al país si la ciudad no resuelve).
+- Botón **"Rellenar ubicaciones faltantes"** (pestaña Administradores) para geocodificar registros
+  antiguos sin coordenadas.
+
+> Nominatim y los tiles de OSM son gratuitos pero piden uso moderado (User-Agent, ≤1 req/seg). Para
+> mucho tráfico, usar un proveedor con key (Carto/Stadia/Mapbox).
 
 ## Imágenes (Cloudinary — subida firmada)
 
-La subida usa **firma del lado servidor**: el navegador pide una firma a
-`POST /api/cloudinary/signature` (rate-limitado), y con ella sube el archivo directo a Cloudinary.
-El **API Secret vive solo en el backend** (Render), nunca en el frontend ni en el repo. La app solo
-guarda la `secure_url` resultante. La carpeta se firma en el servidor, así que no se puede manipular.
+El navegador pide una firma a `POST /api/cloudinary/signature` y con ella sube el archivo directo a
+Cloudinary; el **API Secret vive solo en el backend**. La app guarda solo la `secure_url`.
 
-Configuración (una vez):
-1. Crea cuenta en Cloudinary → en **Settings → Account** copia el **Cloud name**, y en
-   **Settings → API Keys** copia **API Key** y **API Secret**.
-2. Pon estas variables **en el backend** (`backend/.env` en local y en **Render**):
-   - `CLOUDINARY_CLOUD_NAME`
-   - `CLOUDINARY_API_KEY`
-   - `CLOUDINARY_API_SECRET`  ← secreto, solo aquí
-   - `CLOUDINARY_FOLDER` (p. ej. `VenezuelaSolidaria`)
-3. El frontend **no** necesita variables de Cloudinary.
+Configuración (una vez): en Cloudinary copia **Cloud name**, **API Key** y **API Secret** y ponlos
+en el backend (`CLOUDINARY_*`). El control de subida acepta **arrastrar, pegar (Ctrl/Cmd+V) o elegir
+archivo**; valida JPG/PNG y ≤ 3 MB en el cliente. La publicación sigue pasando por moderación.
 
-El control acepta **arrastrar, pegar (Ctrl/Cmd+V) o elegir archivo**; valida JPG/PNG y ≤ 3 MB en el
-cliente. El backend valida además que lo guardado sea un enlace `http(s)`, lo sirve como `<img>`, y
-la publicación sigue pasando por moderación.
+## Galería de portada
 
-> **Esquema:** la columna `image_url` se crea sola en una BD nueva. En una BD existente, una vez:
-> `ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url varchar(2048);`
+Carrusel de fotos detrás del texto del hero (autoplay + swipe). Si no hay fotos, el hero se ve
+normal. Se administra desde la pestaña **Galería** del panel (subir con Cloudinary + eliminar).
 
 ## Tiempo real (SSE)
 
-La home y el panel admin se actualizan **en vivo** sin recargar, vía Server-Sent Events:
-
-- El backend expone `GET /api/stream` y empuja **señales** ligeras cuando algo cambia, p. ej.
-  `data: {"scopes":["pending"]}` o `{"scopes":["published"]}`. El stream **no transporta los
-  registros**, solo avisa "esta lista cambió"; el cliente vuelve a pedir los datos por el GET que
-  corresponda (público o autenticado). Por eso el endpoint puede ser público sin filtrar nada.
+La home y el panel se actualizan en vivo sin recargar:
+- El backend (`GET /api/stream`) empuja **señales** ligeras (`{"scopes":["pending"]}`, …) cuando algo
+  cambia. **No transporta los registros**; el cliente vuelve a pedir los datos por el GET que
+  corresponda. Por eso el endpoint es público sin filtrar nada.
 - El frontend escucha con `EventSource` (hook `frontend/app/lib/useEventStream.ts`, reconexión
-  automática). La **home** refresca al cambiar `published`; el **panel admin** refresca la pestaña
-  activa al cambiar su scope.
+  automática).
 
-### Notas de producción para SSE
-- Usar un worker de larga duración: con gunicorn, `-k gevent` (o `gthread` con varios `--threads`)
-  para que las conexiones abiertas no agoten los workers `sync`.
-- Con **varias instancias/procesos**, el broker en memoria (`backend/events.py`) no cruza procesos
-  → cambiarlo por **Redis pub/sub** para que los eventos lleguen a todos.
-- El proxy no debe bufferizar la respuesta (ya enviamos `X-Accel-Buffering: no`).
-- `SSE_HEARTBEAT_SECONDS` (def. 20) controla el latido que mantiene viva la conexión.
+**Producción:** usar gunicorn con worker `-k gevent` (conexiones largas); con varias instancias, el
+broker en memoria (`backend/events.py`) no cruza procesos → usar **Redis pub/sub**. El proxy no debe
+bufferizar (ya enviamos `X-Accel-Buffering: no`).
 
 ## Protección contra abuso / DoS
 
-El backend incluye varias capas (configurables por entorno, ver `backend/.env.example`):
+- **Rate limiting por IP** (Flask-Limiter): global `RATELIMIT_DEFAULT`; `POST /api/submissions`
+  5/min y 20/hora; `POST /api/admin/login` 8/min y 40/hora; `429` al exceder.
+- **Límite de tamaño de body** (`MAX_CONTENT_LENGTH` → `413`) y topes de longitud en los campos.
+- **`PROXY_HOPS`** para usar la IP real detrás de un proxy.
+- En producción, `RATELIMIT_STORAGE_URI` → Redis para consistencia multi-proceso.
 
-- **Rate limiting por IP** (Flask-Limiter):
-  - Global: `RATELIMIT_DEFAULT` (def. 240/hora) en todos los endpoints.
-  - `POST /api/submissions`: 5/min y 20/hora (evita spam del formulario público).
-  - `POST /api/admin/login`: 8/min y 40/hora (frena fuerza bruta de contraseñas).
-  - Respuesta `429` cuando se supera el límite.
-- **Límite de tamaño de body**: `MAX_CONTENT_LENGTH` (def. 64 KB) → `413` si se excede.
-- **Topes de longitud** en los campos del envío (título, descripción, URL).
-- **`PROXY_HOPS`**: detrás de un reverse proxy (nginx, Render, Fly…), ponlo en `1`+ para que el
-  rate limiting use la IP real del cliente (`X-Forwarded-For`) y no la del proxy.
+## Despliegue (Vercel + Render + Neon)
 
-> En producción, apunta `RATELIMIT_STORAGE_URI` a Redis (`redis://…`) para que los límites sean
-> consistentes entre varios procesos/instancias. En memoria (`memory://`) sirve para un solo proceso.
-
-## Funcionalidades
-
-- Búsqueda por nombre, ciudad o palabra clave
-- Filtros por categoría (Donaciones, Directorios, Emergencia, Quedadas) con contadores
-- Filtro por país dentro de Quedadas
-- Filtro por **rango de fechas** (Desde / Hasta) en la vista pública (un evento coincide si su
-  intervalo se solapa con el rango buscado)
-- Campo de **fecha con selector** en el formulario: **inicio** y **fin (opcional)**. Se guardan en
-  ISO (`YYYY-MM-DD`) y se muestran en formato corto en español (p. ej. "sáb 28 jun – dom 29 jun")
-- **Imagen opcional** por registro (subida a Cloudinary): arrastrar, pegar (Ctrl/Cmd+V) o elegir
-  archivo; solo JPG/PNG, máx. 3 MB. Se muestra como portada en la tarjeta
-- Tarjetas con badge de verificación, acción principal (donar/visitar/llamar) y copiar al portapapeles
-- Tres temas visuales (Esperanza, Sereno, Tricolor) con persistencia en `localStorage`
-- Formulario "Agregar al directorio" con validación, detección de duplicados en el servidor y
-  estado de confirmación
-- Panel de moderación en `/admin` (login con usuario + contraseña) para aprobar/rechazar envíos
-- Actualización en **tiempo real** (SSE): la home y el panel admin se refrescan solos al haber cambios
+1. **Neon** — crea la BD y copia el connection string.
+2. **Render** (backend) — Root `backend`, build `pip install -r requirements.txt`, start
+   `gunicorn -k gevent -w 1 app:app --bind 0.0.0.0:$PORT --timeout 120`, health check `/api/health`.
+   Variables: `DATABASE_URL`, `SECRET_KEY`, `ADMIN_EMAIL/PASSWORD`, `CLOUDINARY_*`, `CORS_ORIGINS`,
+   `PROXY_HOPS=1`, `PYTHON_VERSION=3.12.x`. **1 worker** (el broker SSE es en memoria).
+3. **Vercel** (frontend) — Root `frontend`, `NEXT_PUBLIC_API_BASE` = URL del backend.
+4. Ajusta `CORS_ORIGINS` en Render con el dominio del frontend.

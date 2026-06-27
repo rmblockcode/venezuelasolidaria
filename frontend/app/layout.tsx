@@ -15,6 +15,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.venezuelasolidaria.com"
+  ),
   title: "Venezuela Solidaria · Directorio de ayuda",
   description:
     "Directorio centralizado de recaudaciones, contactos de emergencia, páginas comunitarias y jornadas solidarias tras los sismos en Venezuela.",

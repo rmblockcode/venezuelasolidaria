@@ -7,9 +7,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import Link from "next/link";
 import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
+import { resourcePath } from "../lib/share";
 
 // Teardrop pin colored by category — avoids Leaflet's default-icon bundling issue.
 function pinIcon(color: string) {
@@ -80,7 +82,11 @@ export default function MapView({ items }: { items: Resource[] }) {
                       <img src={item.image} alt="" className="map-pop-img" />
                     )}
                     <span className="map-pop-tag">{c.label}</span>
-                    <h4>{item.title}</h4>
+                    <h4>
+                      <Link href={resourcePath(item.id)} className="post-title-link">
+                        {item.title}
+                      </Link>
+                    </h4>
                     {meta && <p className="map-pop-meta">{meta}</p>}
                     {(item.url || item.phone) && (
                       <a
