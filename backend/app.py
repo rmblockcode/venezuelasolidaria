@@ -119,6 +119,16 @@ def only_digits(s):
     return re.sub(r"\D", "", s or "")
 
 
+def clamp_int(value, default, lo, hi):
+    """Parse a query-string int, falling back to `default`, and clamp to [lo, hi].
+    Keeps a bogus ?limit=abc from 500-ing and an absurd ?limit=999999 from hurting."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(n, hi))
+
+
 def seed_if_empty():
     if Resource.query.count() > 0:
         return
@@ -139,9 +149,37 @@ def ensure_schema():
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS moderated_by varchar(255)",
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS moderated_at timestamptz",
         "ALTER TABLE resources ADD COLUMN IF NOT EXISTS moderation_action varchar(20)",
+        # Indexes for the hot read paths. create_all() never adds indexes to an
+        # already-existing table, so they're declared idempotently here too.
+        "CREATE INDEX IF NOT EXISTS ix_resources_status_created ON resources (status, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_resources_country ON resources (country)",
+        # Normalized duplicate-check columns (+ indexes) introduced after launch.
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS url_norm varchar(2048)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS phone_digits varchar(64)",
+        "CREATE INDEX IF NOT EXISTS ix_resources_url_norm ON resources (url_norm)",
+        "CREATE INDEX IF NOT EXISTS ix_resources_phone_digits ON resources (phone_digits)",
     ]
     for s in stmts:
         db.session.execute(text(s))
+    db.session.commit()
+    backfill_normalized()
+
+
+def backfill_normalized():
+    """One-time fill of url_norm/phone_digits for rows created before those columns
+    existed. Normalization lives in Python (normalize_url/only_digits), so it can't
+    be done in pure SQL. Idempotent: only touches rows where the value is missing."""
+    rows = Resource.query.filter(
+        db.or_(
+            db.and_(Resource.url.isnot(None), Resource.url_norm.is_(None)),
+            db.and_(Resource.phone.isnot(None), Resource.phone_digits.is_(None)),
+        )
+    ).all()
+    if not rows:
+        return
+    for r in rows:
+        r.url_norm = normalize_url(r.url) or None if r.url else None
+        r.phone_digits = only_digits(r.phone) or None if r.phone else None
     db.session.commit()
 
 
@@ -304,7 +342,11 @@ def create_app():
         country = request.args.get("country")
         if country and country != "todos":
             q = q.filter_by(country=country)
-        items = q.order_by(Resource.created_at.desc()).all()
+        # Defensive cap, NOT pagination: the home filters/counts/searches client-side
+        # over the full set, so we still return everything — but never an unbounded
+        # number of rows. Raise the default if the directory legitimately outgrows it.
+        cap = clamp_int(request.args.get("limit"), default=500, lo=1, hi=1000)
+        items = q.order_by(Resource.created_at.desc()).limit(cap).all()
         return jsonify({"items": [r.to_dict() for r in items]})
 
     @app.get("/api/resources/<sid>")
@@ -358,13 +400,20 @@ def create_app():
         digits = only_digits(raw_url)
 
         # Reject duplicates — but ignore archived (rejected) entries so a rejected
-        # link can be resubmitted.
-        for r in Resource.query.filter(Resource.status != "rejected").all():
-            if r.url and normalize_url(r.url) == n and n:
-                if r.status == "pending":
+        # link can be resubmitted. Indexed lookups on the normalized columns instead
+        # of pulling the whole table into Python.
+        if n:
+            dup = Resource.query.filter(
+                Resource.status != "rejected", Resource.url_norm == n
+            ).first()
+            if dup:
+                if dup.status == "pending":
                     return jsonify({"error": "Este enlace ya fue enviado y está en revisión."}), 409
                 return jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409
-            if r.phone and digits and only_digits(r.phone) == digits:
+        if digits:
+            if Resource.query.filter(
+                Resource.status != "rejected", Resource.phone_digits == digits
+            ).first():
                 return jsonify({"error": "Este enlace o contacto ya está publicado en el directorio."}), 409
 
         entry = Resource(
@@ -380,6 +429,8 @@ def create_app():
             event_end_date=(data.get("dateEnd") or "").strip() or None,
             image_url=(data.get("image") or "").strip() or None,
             contact=(data.get("contact") or "").strip() or None,
+            url_norm=normalize_url(url) or None,
+            phone_digits=only_digits(phone) or None,
             verified=False,
             status="pending",
         )
@@ -441,11 +492,19 @@ def create_app():
     @app.get("/api/admin/submissions")
     @require_admin
     def admin_submissions():
-        """List entries by status (default: pending submissions awaiting review)."""
+        """List entries by status (default: pending submissions awaiting review).
+
+        Bounded by a generous default cap so one status can't pull an unbounded
+        result set; optional ?limit/?offset let a future panel page through it
+        without changing today's behavior."""
         status = request.args.get("status", "pending")
+        limit = clamp_int(request.args.get("limit"), default=500, lo=1, hi=1000)
+        offset = clamp_int(request.args.get("offset"), default=0, lo=0, hi=10_000_000)
         items = (
             Resource.query.filter_by(status=status)
             .order_by(Resource.created_at.desc())
+            .limit(limit)
+            .offset(offset)
             .all()
         )
         return jsonify({"items": [r.to_admin_dict() for r in items]})
@@ -549,6 +608,11 @@ def create_app():
             if key in data:
                 value = (data[key] or "").strip()
                 setattr(entry, attr, value or None)
+        # Keep the normalized duplicate-check columns in sync with their source field.
+        if "url" in data:
+            entry.url_norm = normalize_url(entry.url) or None
+        if "phone" in data:
+            entry.phone_digits = only_digits(entry.phone) or None
         if "lat" in data or "lng" in data:
             entry.lat, entry.lng = valid_coords(data.get("lat"), data.get("lng")) or (None, None)
         elif loc_changed:
