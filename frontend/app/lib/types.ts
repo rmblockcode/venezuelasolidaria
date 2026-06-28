@@ -1,5 +1,4 @@
 export type CategoryKey = "donaciones" | "paginas" | "emergencia" | "quedadas";
-export type ThemeKey = "esperanza" | "sereno" | "tricolor";
 
 export interface Resource {
   id: string;

@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { CategoryKey, Resource, ThemeKey } from "../lib/types";
-import { CATS, CAT_ORDER, THEME_LABELS, THEME_ORDER } from "../lib/constants";
+import { CategoryKey, Resource } from "../lib/types";
+import { CATS, CAT_ORDER } from "../lib/constants";
 import { fetchResources } from "../lib/api";
 import { useEventStream } from "../lib/useEventStream";
 import { isIsoDate } from "../lib/format";
@@ -13,10 +13,13 @@ import Card from "./Card";
 import ListItem from "./ListItem";
 import HeroGallery from "./HeroGallery";
 import AddModal from "./AddModal";
+import Carousel from "./Carousel";
+import CatIcon from "./CatIcon";
 
-const THEME_KEY = "vzla-dir-theme";
 // Cantidad de tarjetas que se cargan por tanda al hacer scroll (infinite scroll).
 const CHUNK = 12;
+// Máximo de tarjetas por carrusel de categoría en la portada (el resto, en "Ver todas").
+const ROW_MAX = 12;
 
 // Leaflet needs `window`, so the map is client-only.
 const MapView = dynamic(() => import("./MapView"), {
@@ -29,7 +32,6 @@ export default function Directory() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  const [theme, setTheme] = useState<ThemeKey>("esperanza");
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<CategoryKey | "todos">("todos");
   const [pais, setPais] = useState("todos");
@@ -62,25 +64,6 @@ export default function Directory() {
   useEventStream((scopes) => {
     if (scopes.includes("published")) load(true);
   });
-
-  // restore theme
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(THEME_KEY) as ThemeKey | null;
-      if (saved && THEME_LABELS[saved]) setTheme(saved);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  function changeTheme(t: ThemeKey) {
-    setTheme(t);
-    try {
-      localStorage.setItem(THEME_KEY, t);
-    } catch {
-      /* ignore */
-    }
-  }
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { todos: resources.length };
@@ -126,6 +109,15 @@ export default function Directory() {
     (i) => typeof i.lat === "number" && typeof i.lng === "number"
   ).length;
 
+  // Portada estilo Booking/Airbnb: mientras el usuario no acote la búsqueda,
+  // mostramos "slides" por categoría en vez de una sola grilla.
+  const browsing = view === "tarjetas" && cat === "todos" && pais === "todos" && !query.trim();
+  const grouped = useMemo(
+    () => CAT_ORDER.map((k) => ({ k, items: list.filter((r) => r.category === k) })).filter((g) => g.items.length),
+    [list]
+  );
+  const featured = useMemo(() => list.filter((r) => r.verified).slice(0, 10), [list]);
+
   const filtersActive =
     cat !== "todos" ||
     pais !== "todos" ||
@@ -166,7 +158,7 @@ export default function Directory() {
   }, [view, hasMore, list.length, visible]);
 
   return (
-    <div data-theme={theme}>
+    <div data-theme="esperanza">
       <div className="flagbar">
         <div style={{ background: "#f6c945" }} />
         <div style={{ background: "#1f6fb0" }} />
@@ -187,27 +179,16 @@ export default function Directory() {
             </div>
           </div>
           <div className="spacer" />
-          <div className="themeswitch">
-            <span>Estilo</span>
-            <div className="opts">
-              {THEME_ORDER.map((t) => (
-                <button
-                  key={t}
-                  className={`theme-btn${theme === t ? " active" : ""}`}
-                  onClick={() => changeTheme(t)}
-                >
-                  {THEME_LABELS[t]}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Link href="/api-docs" className="header-link">
+            API
+          </Link>
           <button className="btn-add-top" onClick={() => setShowAdd(true)}>
-            + Agregar
+            + Agregar enlace
           </button>
         </div>
       </header>
 
-      <section className="hero wrap">
+      <section className="hero">
         <HeroGallery>
           <h1>Toda la ayuda para Venezuela, en un solo lugar.</h1>
           <p className="lede">
@@ -217,6 +198,7 @@ export default function Directory() {
           </p>
         </HeroGallery>
 
+        <div className="wrap hero-tools">
         <div className="searchrow">
           <div className="searchbox">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2">
@@ -243,7 +225,8 @@ export default function Directory() {
               setPais("todos");
             }}
           >
-            Todos ({counts.todos || 0})
+            <CatIcon k="todos" size={16} className="chip-ic" />
+            Todos <span className="chip-n">({counts.todos || 0})</span>
           </button>
           {CAT_ORDER.map((k) => (
             <button
@@ -255,7 +238,8 @@ export default function Directory() {
                 setPais("todos");
               }}
             >
-              {CATS[k].label} ({counts[k] || 0})
+              <CatIcon k={k} size={16} className="chip-ic" />
+              {CATS[k].label} <span className="chip-n">({counts[k] || 0})</span>
             </button>
           ))}
         </div>
@@ -348,6 +332,7 @@ export default function Directory() {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       <section className="grid-sec wrap">
@@ -397,6 +382,31 @@ export default function Directory() {
               </div>
             )}
           </>
+        ) : browsing ? (
+          // Portada: "slides" por categoría (estilo Booking/Airbnb).
+          <div className="rows">
+            {featured.length > 2 && (
+              <Carousel title="Destacados" count={featured.length}>
+                {featured.map((item) => (
+                  <Card key={`f-${item.id}`} item={item} />
+                ))}
+              </Carousel>
+            )}
+            {grouped.map((g) => (
+              <Carousel
+                key={g.k}
+                title={CATS[g.k].label}
+                icon={<CatIcon k={g.k} size={20} />}
+                count={g.items.length}
+                onSeeAll={g.items.length > ROW_MAX ? () => setCat(g.k) : undefined}
+                seeAllLabel="Ver todas"
+              >
+                {g.items.slice(0, ROW_MAX).map((item) => (
+                  <Card key={`${g.k}-${item.id}`} item={item} />
+                ))}
+              </Carousel>
+            ))}
+          </div>
         ) : (
           <>
             <div className="grid">
