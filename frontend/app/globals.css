@@ -74,6 +74,8 @@ header.site .inner{padding:12px 24px;display:flex;align-items:center;gap:16px}
 .fab:active{transform:scale(.96)}
 
 @media (max-width:640px){
+  /* iOS no hace auto-zoom al enfocar un campo si el texto mide >=16px */
+  input,textarea,select{font-size:16px !important}
   header.site .inner{padding:10px 16px;gap:10px}
   .btn-add-top{display:none}
   .header-link{display:none}
@@ -102,24 +104,23 @@ header.site .inner{padding:12px 24px;display:flex;align-items:center;gap:16px}
 
 /* hero — banda a pantalla completa con el fondo difuminado por los lados */
 section.hero{padding:0 0 8px;overflow:hidden}
-section.hero h1{font-family:var(--font-serif),Georgia,serif;font-weight:600;font-size:clamp(31px,5vw,47px);line-height:1.07;letter-spacing:-.012em;margin:0;color:var(--ink)}
-section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.55;color:var(--ink-2);max-width:600px}
+section.hero h1{font-family:var(--font-serif),Georgia,serif;font-weight:600;font-size:clamp(31px,5vw,47px);line-height:1.07;letter-spacing:-.012em;margin:0;color:var(--ink);text-shadow:0 0 22px var(--bg),0 0 10px var(--bg)}
+section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.55;color:var(--ink-2);max-width:540px;text-shadow:0 0 16px var(--bg),0 0 8px var(--bg)}
 
-.hero-banner{position:relative;isolation:isolate}
-.hero-banner-inner{padding:52px 24px 24px;position:relative;z-index:1}
-.hero-head-content{max-width:620px}
+.hero-banner{position:relative;isolation:isolate;min-height:360px;display:flex;align-items:center}
+.hero-banner-inner{padding:48px 24px 30px;position:relative;z-index:1;width:100%}
+.hero-head-content{max-width:600px}
 /* fondo: fotos de la galería a todo el ancho, difuminadas a los lados (y por abajo) */
 .hg-bg{position:absolute;inset:0;z-index:0;pointer-events:none;
-  -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 15%,#000 85%,transparent 100%);
-          mask-image:linear-gradient(to right,transparent 0%,#000 15%,#000 85%,transparent 100%)}
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 14%,#000 86%,transparent 100%);
+          mask-image:linear-gradient(to right,transparent 0%,#000 14%,#000 86%,transparent 100%)}
 .hg-track{display:flex;height:100%;transition:transform .9s cubic-bezier(.2,.8,.2,1)}
 .hg-slide{min-width:100%;height:100%}
-.hg-slide img{width:100%;height:100%;object-fit:cover;display:block;opacity:.5}
-/* lavado cálido: papel a la izquierda (texto legible) que se abre a la foto a la
-   derecha, con fundido inferior hacia el papel */
+.hg-slide img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;opacity:.42}
+/* difuminado parejo: sin lavado direccional a la izquierda; sólo un fundido suave
+   hacia el papel por abajo (la máscara lateral ya difumina por igual ambos lados) */
 .hg-scrim{position:absolute;inset:0;background:
-  linear-gradient(100deg,var(--bg) 4%,color-mix(in srgb,var(--bg) 62%,transparent) 40%,transparent 68%),
-  linear-gradient(to top,var(--bg) 2%,transparent 46%)}
+  linear-gradient(to top,var(--bg) 2%,color-mix(in srgb,var(--bg) 24%,transparent) 32%,transparent 60%)}
 .hg-dots{position:absolute;z-index:2;bottom:14px;left:50%;transform:translateX(-50%);width:min(1120px,100% - 48px);display:flex;justify-content:flex-end;gap:6px}
 .hg-dots button{width:7px;height:7px;border-radius:50%;border:none;background:color-mix(in srgb,var(--ink) 32%,transparent);cursor:pointer;padding:0;transition:all .2s ease}
 .hg-dots button.active{background:var(--ink);width:18px;border-radius:4px}
@@ -136,7 +137,7 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .gallery-del:disabled{opacity:.5}
 
 .searchrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
-.searchbox{flex:1;min-width:240px;display:flex;align-items:center;gap:11px;background:var(--surface-2);border:1px solid var(--line);border-radius:13px;padding:0 16px;transition:border-color .14s ease,box-shadow .14s ease}
+.searchbox{flex:1;min-width:240px;display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line-2);border-radius:13px;padding:0 16px;box-shadow:0 1px 2px rgba(36,31,23,.06),0 4px 14px -8px rgba(36,31,23,.12);transition:border-color .14s ease,box-shadow .14s ease}
 .searchbox:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 14%,transparent)}
 .searchbox input{flex:1;border:none;outline:none;background:transparent;padding:14px 0;font-size:15px;color:var(--ink)}
 .btn-add-hero{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;border-radius:13px;border:1px solid var(--brand);background:var(--brand);color:#fbf6ea;font-weight:700;font-size:15px;line-height:1;cursor:pointer;transition:background .14s ease}
@@ -283,10 +284,10 @@ a.post-loc:hover{text-decoration:underline;text-underline-offset:2px}
 .card-foot{margin-top:auto;display:flex;flex-direction:column;gap:11px}
 .card .meta{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);font-weight:600}
 .card .meta .pin{width:7px;height:7px;border-radius:50%;background:var(--cat);display:inline-block}
-.card .actions{display:flex;gap:8px;align-items:center}
-.card .actions a.primary{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:10px;background:var(--cat);color:#fff;font-weight:700;font-size:13px;line-height:1;text-decoration:none;transition:filter .12s ease}
+.card .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.card .actions a.primary{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;border-radius:10px;background:var(--cat);color:#fff;font-weight:700;font-size:13px;line-height:1;white-space:nowrap;text-decoration:none;transition:filter .12s ease}
 .card .actions a.primary:hover{filter:brightness(1.07)}
-.card .actions button.copy{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:13px;line-height:1;cursor:pointer;transition:background .12s ease}
+.card .actions button.copy{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 13px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:13px;line-height:1;white-space:nowrap;cursor:pointer;transition:background .12s ease}
 .card .actions button.copy:hover{background:var(--surface-2)}
 /* infinite scroll sentinel + spinner */
 .scroll-sentinel{display:flex;align-items:center;justify-content:center;gap:9px;padding:26px 0 10px;font-size:13px;font-weight:600;color:var(--muted)}

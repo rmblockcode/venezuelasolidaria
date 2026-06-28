@@ -116,6 +116,8 @@ export default function Directory() {
     () => CAT_ORDER.map((k) => ({ k, items: list.filter((r) => r.category === k) })).filter((g) => g.items.length),
     [list]
   );
+  // Destacados = recursos verificados, más recientes primero (el backend
+  // `/api/resources` ya ordena por created_at DESC), hasta 10.
   const featured = useMemo(() => list.filter((r) => r.verified).slice(0, 10), [list]);
 
   const filtersActive =
