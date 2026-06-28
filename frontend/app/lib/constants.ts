@@ -1,4 +1,4 @@
-import { CategoryKey, ThemeKey } from "./types";
+import { CategoryKey } from "./types";
 
 export const CATS: Record<CategoryKey, { label: string; color: string; action: string }> = {
   donaciones: { label: "Donaciones", color: "#b07d18", action: "Donar ↗" },
@@ -8,11 +8,3 @@ export const CATS: Record<CategoryKey, { label: string; color: string; action: s
 };
 
 export const CAT_ORDER: CategoryKey[] = ["donaciones", "paginas", "emergencia", "quedadas"];
-
-export const THEME_LABELS: Record<ThemeKey, string> = {
-  esperanza: "Esperanza",
-  sereno: "Sereno",
-  tricolor: "Tricolor",
-};
-
-export const THEME_ORDER: ThemeKey[] = ["esperanza", "sereno", "tricolor"];

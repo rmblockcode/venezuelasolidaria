@@ -7,6 +7,7 @@ import { Resource } from "../lib/types";
 import { CATS } from "../lib/constants";
 import { formatEventRange } from "../lib/format";
 import { resourcePath, shareResource } from "../lib/share";
+import CatIcon from "./CatIcon";
 
 export default function Card({ item }: { item: Resource }) {
   const [copied, setCopied] = useState(false);
@@ -53,24 +54,28 @@ export default function Card({ item }: { item: Resource }) {
 
   return (
     <div className="card" style={{ "--cat": c.color } as React.CSSProperties}>
-      {item.image && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.image}
-          alt={item.title}
-          className="card-cover"
-          loading="lazy"
-          onClick={() => setZoom(true)}
-          title="Ampliar imagen"
-        />
-      )}
-      <div className="toprow">
-        <span className="tag">{c.label}</span>
-        <div style={{ flex: 1 }} />
-        {item.verified ? (
-          <span className="verified">✓ Verificado</span>
+      <div className="card-coverwrap">
+        {item.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.image}
+            alt={item.title}
+            className="card-cover"
+            loading="lazy"
+            onClick={() => setZoom(true)}
+            title="Ampliar imagen"
+          />
         ) : (
-          <span className="unverified">Sin verificar</span>
+          // Portada generada a partir de la categoría cuando no hay foto.
+          <div className="card-cover card-cover-ph" aria-hidden>
+            <CatIcon k={item.category} size={44} />
+          </div>
+        )}
+        <span className="cover-tag">{c.label}</span>
+        {item.verified ? (
+          <span className="cover-seal">✓ Verificado</span>
+        ) : (
+          <span className="cover-seal unv">Sin verificar</span>
         )}
       </div>
       <h3>

@@ -5,15 +5,17 @@ import { GalleryPhoto } from "../lib/types";
 import { fetchGallery } from "../lib/api";
 
 /**
- * Wraps the hero text. When there are gallery photos, they auto-advance as a
- * faint background banner behind the text (subtle, swipeable). With no photos,
- * it renders the text exactly as before.
+ * Banda del hero a pantalla completa. Las fotos de la galería se ven como un
+ * fondo difuminado por los lados (y por abajo) detrás del texto, y avanzan solas.
+ * En móvil se puede deslizar con el dedo (swipe) sobre toda la banda. Sin fotos,
+ * el hero se muestra sobre el papel, sin banda.
  */
 export default function HeroGallery({ children }: { children: React.ReactNode }) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchX = useRef<number | null>(null);
+  const touchY = useRef<number | null>(null);
 
   useEffect(() => {
     fetchGallery().then(setPhotos).catch(() => {});
@@ -31,30 +33,39 @@ export default function HeroGallery({ children }: { children: React.ReactNode })
     if (n > 0 && idx >= n) setIdx(0);
   }, [n, idx]);
 
+  const go = (i: number) => setIdx(((i % n) + n) % n);
+
   if (n === 0) {
     return (
-      <div className="hero-head">
-        <div className="hero-head-content">{children}</div>
+      <div className="hero-banner">
+        <div className="wrap hero-banner-inner">
+          <div className="hero-head-content">{children}</div>
+        </div>
       </div>
     );
   }
 
-  const go = (i: number) => setIdx(((i % n) + n) % n);
-
   return (
     <div
-      className="hero-head with-bg"
+      className="hero-banner with-bg"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={(e) => {
         touchX.current = e.touches[0].clientX;
+        touchY.current = e.touches[0].clientY;
       }}
       onTouchEnd={(e) => {
-        if (touchX.current != null) {
+        if (touchX.current != null && touchY.current != null) {
           const dx = e.changedTouches[0].clientX - touchX.current;
-          if (Math.abs(dx) > 40) go(dx < 0 ? idx + 1 : idx - 1);
+          const dy = e.changedTouches[0].clientY - touchY.current;
+          // Sólo cuenta como swipe si el gesto es claramente horizontal,
+          // así no interfiere con el scroll vertical de la página.
+          if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+            go(dx < 0 ? idx + 1 : idx - 1);
+          }
         }
         touchX.current = null;
+        touchY.current = null;
       }}
     >
       <div className="hg-bg" aria-hidden="true">
@@ -66,8 +77,11 @@ export default function HeroGallery({ children }: { children: React.ReactNode })
             </div>
           ))}
         </div>
+        <div className="hg-scrim" />
       </div>
-      <div className="hero-head-content">{children}</div>
+      <div className="wrap hero-banner-inner">
+        <div className="hero-head-content">{children}</div>
+      </div>
       {n > 1 && (
         <div className="hg-dots">
           {photos.map((_, i) => (
