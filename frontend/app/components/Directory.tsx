@@ -433,7 +433,10 @@ export default function Directory() {
         </div>
         <div className="wrap footer-bottom">
           <span>© 2026 Venezuela Solidaria · Ayuda humanitaria, sin fines de lucro.</span>
-          <Link href="/privacidad">Política de privacidad</Link>
+          <span className="footer-links">
+            <Link href="/api-docs">API</Link>
+            <Link href="/privacidad">Política de privacidad</Link>
+          </span>
         </div>
       </footer>
 

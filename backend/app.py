@@ -521,7 +521,7 @@ def create_app():
                 "detail": "GET /api/v1/resources/{id}",
                 "create": "POST /api/v1/resources (header X-API-Key)",
             },
-            "docs": f"{PUBLIC_SITE_URL.rstrip('/')}/API.md",
+            "docs": f"{PUBLIC_SITE_URL.rstrip('/')}/api-docs",
         })
 
     @app.get("/api/v1/resources")

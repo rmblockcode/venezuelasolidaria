@@ -3,7 +3,10 @@
 API pública y estable para que las apps de la **red de directorios de ayuda** consulten y aporten
 recursos. Pensada para interoperar con otras apps de la red (cada una abre sus endpoints).
 
-- **Base URL (producción):** `https://api.venezuelasolidaria.com` *(ajusta al host real del backend)*
+> 📖 **Versión web (legible):** https://www.venezuelasolidaria.com/api-docs — esta misma
+> documentación, presentada como página. Este `API.md` es la referencia en el repositorio.
+
+- **Base URL (producción):** `https://api.venezuelasolidaria.com`
 - **Base URL (local):** `http://localhost:5001`
 - **Formato:** JSON. Errores: `{ "error": "<mensaje>" }` con el código HTTP correspondiente.
 - **CORS:** las rutas `/api/v1/*` están abiertas a cualquier origen (sin cookies/credenciales).
@@ -33,7 +36,7 @@ curl https://api.venezuelasolidaria.com/api/v1
     "detail": "GET /api/v1/resources/{id}",
     "create": "POST /api/v1/resources (header X-API-Key)"
   },
-  "docs": "https://www.venezuelasolidaria.com/API.md"
+  "docs": "https://www.venezuelasolidaria.com/api-docs"
 }
 ```
 
