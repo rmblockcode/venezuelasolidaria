@@ -4,6 +4,23 @@ export const MAX_IMAGE_MB = 3;
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png"]; // jpg === image/jpeg
 
+/**
+ * Adapta una imagen a un recorte concreto. Si la URL es de Cloudinary inserta una
+ * transformación de smart-crop (`c_fill,g_auto` enfoca el sujeto → no corta feo) con
+ * tamaño y formato óptimos. Cualquier otra URL (CDN externo) se devuelve intacta.
+ */
+export function cloudinaryFill(url: string | null | undefined, w: number, h: number): string {
+  if (!url) return "";
+  const marker = "/image/upload/";
+  const i = url.indexOf(marker);
+  // Solo Cloudinary; y no duplicar si ya trae una transformación tras /upload/.
+  if (!url.includes("res.cloudinary.com") || i === -1) return url;
+  const after = url.slice(i + marker.length);
+  if (/^[a-z]{1,3}_[^/]+\//i.test(after)) return url; // ya tiene transformación
+  const t = `c_fill,g_auto,w_${w},h_${h},q_auto,f_auto`;
+  return `${url.slice(0, i + marker.length)}${t}/${after}`;
+}
+
 /** Returns an error message if the file is not an allowed image, else null. */
 export function validateImageFile(file: File): string | null {
   if (!ALLOWED_TYPES.includes(file.type)) return "Solo se permiten imágenes JPG o PNG.";

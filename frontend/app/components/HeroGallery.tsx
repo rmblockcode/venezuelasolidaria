@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GalleryPhoto } from "../lib/types";
 import { fetchGallery } from "../lib/api";
+import { cloudinaryFill } from "../lib/cloudinary";
 
 /**
  * Banda del hero a pantalla completa. Las fotos de la galería se ven como un
@@ -73,7 +74,7 @@ export default function HeroGallery({ children }: { children: React.ReactNode })
           {photos.map((p) => (
             <div className="hg-slide" key={p.id}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.image} alt="" />
+              <img src={cloudinaryFill(p.image, 1600, 600)} alt="" />
             </div>
           ))}
         </div>
