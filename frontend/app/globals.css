@@ -144,6 +144,19 @@ section.hero .lede{margin:16px 0 0;font-size:clamp(15px,2vw,17px);line-height:1.
 .btn-add-hero:hover{background:var(--brand-ink);border-color:var(--brand-ink)}
 .btn-add-hero:active{transform:scale(.98)}
 
+/* acceso destacado a la Red Humanitaria desde la portada (banner puente) */
+.net-cta{display:flex;align-items:center;gap:14px;margin-top:18px;padding:13px 18px;border-radius:14px;text-decoration:none;border:1px solid color-mix(in srgb,var(--brand) 26%,var(--line));background:color-mix(in srgb,var(--brand) 6%,var(--surface));transition:background .14s ease,border-color .14s ease,box-shadow .14s ease}
+.net-cta:hover{background:color-mix(in srgb,var(--brand) 9%,var(--surface));border-color:color-mix(in srgb,var(--brand) 40%,var(--line));box-shadow:0 10px 24px -16px rgba(19,73,110,.5)}
+.net-cta-ic{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:11px;background:var(--brand);color:#fbf6ea}
+.net-cta-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.net-cta-txt strong{font-size:14.5px;font-weight:800;color:var(--ink)}
+.net-cta-txt span{font-size:12.5px;color:var(--muted);line-height:1.4}
+.net-cta-go{margin-left:auto;flex-shrink:0;font:700 13px/1 var(--font-sans),sans-serif;color:var(--brand);white-space:nowrap}
+@media (max-width:640px){
+  .net-cta{gap:12px;padding:13px 14px;flex-wrap:wrap}
+  .net-cta-go{margin-left:54px;margin-top:-2px}
+}
+
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .chip{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;font-weight:700;font-size:13px;line-height:1;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums;transition:border-color .12s ease,background .12s ease,color .12s ease;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
 .chip:hover{border-color:var(--line-2);color:var(--ink)}
@@ -334,6 +347,66 @@ footer.site a{color:var(--brand);font-weight:600}
 .footer-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 24px 28px;font-size:12.5px;color:var(--muted)}
 .footer-bottom a{color:var(--brand);font-weight:700}
 .footer-links{display:inline-flex;gap:18px}
+
+/* ---- Red Humanitaria de Datos (/red) ---- */
+.net-head{max-width:1120px;margin:0 auto;padding:34px 24px 4px}
+.net-head h1{font-family:var(--font-serif),serif;font-weight:600;font-size:clamp(26px,4vw,36px);line-height:1.1;letter-spacing:-.01em;margin:0;color:var(--ink)}
+.net-lead{font-size:15px;line-height:1.55;color:var(--ink-2);margin:12px 0 0;max-width:680px}
+.net-attrib{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.net-attrib a{color:var(--brand);font-weight:700}
+.net-tools{max-width:1120px;margin:0 auto;padding:18px 24px 0}
+.net-searchbox{min-width:0}
+.net-chips{margin-top:14px}
+.net-statline{margin-top:14px;font-size:12.5px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.net-results{max-width:1120px;margin:0 auto;padding:16px 24px 80px}
+.net-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.net-card{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--cat);border-radius:14px;padding:16px 18px;transition:border-color .16s ease,box-shadow .16s ease}
+.net-card:hover{border-color:var(--line-2);box-shadow:0 12px 26px -16px rgba(36,31,23,.3)}
+.net-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.net-tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:7px;font-weight:800;font-size:10.5px;line-height:1;letter-spacing:.05em;text-transform:uppercase;color:var(--cat);background:color-mix(in srgb,var(--cat) 11%,var(--surface));border:1px solid color-mix(in srgb,var(--cat) 24%,var(--surface))}
+.net-age,.net-status{font-size:11.5px;font-weight:600;color:var(--muted)}
+.net-status{padding:3px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);text-transform:capitalize}
+.net-card-body{display:flex;gap:12px}
+.net-thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line);background:var(--surface-2);flex-shrink:0}
+.net-card-main{min-width:0;flex:1}
+.net-card-main h3{margin:0;font-family:var(--font-serif),serif;font-weight:600;font-size:17px;line-height:1.25;color:var(--ink)}
+.net-sum{margin:5px 0 0;font-size:13px;line-height:1.5;color:var(--ink-2);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.net-place{margin:6px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.net-ced{margin:4px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.net-card-foot{margin-top:auto;padding-top:4px}
+.net-source{font-size:12px;font-weight:700;color:var(--brand);text-decoration:none}
+.net-source:hover{text-decoration:underline;text-underline-offset:2px}
+.net-source.muted{color:var(--muted);font-weight:600}
+.net-more{display:flex;justify-content:center;margin-top:24px}
+.net-more button{padding:11px 22px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:700 14px/1 var(--font-sans),sans-serif;cursor:pointer;transition:background .12s ease}
+.net-more button:hover:not(:disabled){background:var(--surface-2)}
+.net-more button:disabled{opacity:.6;cursor:default}
+@media (max-width:640px){
+  .net-head{padding:26px 16px 4px}
+  .net-tools{padding:14px 16px 0}
+  .net-results{padding:14px 16px 80px}
+  .net-grid{grid-template-columns:1fr}
+}
+
+/* ---- Contribuciones (/contribuciones) ---- */
+.cred{max-width:1000px;padding:8px 24px 80px}
+.cred h1{font-family:var(--font-serif),serif;font-weight:600;font-size:clamp(28px,4vw,38px);line-height:1.1;margin:18px 0 0;color:var(--ink)}
+.cred-lead{font-size:15.5px;line-height:1.65;color:var(--ink-2);margin:14px 0 0;max-width:720px}
+.cred-lead a,.cred-attrib a,.cred-foot a{color:var(--brand);font-weight:700}
+.cred-attrib{font-size:13px;color:var(--muted);margin:10px 0 0}
+.cred-grid{list-style:none;margin:22px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.cred-card{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--cat);border-radius:14px;padding:16px 18px}
+.cred-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cred-tag{display:inline-flex;align-items:center;padding:4px 9px;border-radius:7px;font-weight:800;font-size:10px;line-height:1;letter-spacing:.05em;text-transform:uppercase;color:var(--cat);background:color-mix(in srgb,var(--cat) 11%,var(--surface));border:1px solid color-mix(in srgb,var(--cat) 24%,var(--surface))}
+.cred-count{font-size:12px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.cred-card h3{margin:0;font-family:var(--font-serif),serif;font-weight:600;font-size:18px;line-height:1.25;color:var(--ink)}
+.cred-link{font-size:12.5px;font-weight:600;color:var(--brand);text-decoration:none;word-break:break-word}
+.cred-link:hover{text-decoration:underline;text-underline-offset:2px}
+.cred-foot{margin:26px 0 0;font-size:14px;line-height:1.6;color:var(--ink-2)}
+@media (max-width:640px){
+  .cred{padding:8px 16px 72px}
+  .cred-grid{grid-template-columns:1fr}
+}
 
 /* legal / privacy page */
 .legal-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px}

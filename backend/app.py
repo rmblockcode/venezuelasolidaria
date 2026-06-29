@@ -18,6 +18,7 @@ from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import humanitarian
 from events import broker
 from geocode import geocode
 from models import db, Resource, AdminUser, ModerationLog, GalleryPhoto, PartnerKey
@@ -499,6 +500,67 @@ def create_app():
         if not entry or entry.status != "published":
             return jsonify({"error": "No encontrado."}), 404
         return jsonify(entry.to_dict())
+
+    # ---- Red Humanitaria de Datos: proxy de lectura (índice común externo) ----
+    # La API externa no manda CORS; la consultamos desde el servidor, cacheada y
+    # normalizada (sin cédula completa). El frontend solo habla con nosotros.
+    @app.get("/api/network/search")
+    @limiter.limit("60 per minute")
+    def network_search():
+        limit = clamp_int(request.args.get("limit"), default=24, lo=1, hi=50)
+        offset = clamp_int(request.args.get("offset"), default=0, lo=0, hi=5000)
+        result = humanitarian.search(
+            q=(request.args.get("q") or "").strip(),
+            record_type=(request.args.get("record_type") or "").strip(),
+            city=(request.args.get("city") or "").strip(),
+            source_id=(request.args.get("source_id") or "").strip(),
+            limit=limit,
+            offset=offset,
+        )
+        if result is None:
+            return jsonify({"error": "La red no está disponible ahora."}), 502
+        items = result["items"]
+        total = result["total_matches"]
+        return jsonify(
+            {
+                "items": items,
+                "total_matches": total,
+                "source_count": result["source_count"],
+                "record_types": result["record_types"],
+                "pagination": {
+                    "limit": limit,
+                    "offset": offset,
+                    "returned": len(items),
+                    "has_more": offset + len(items) < total,
+                },
+            }
+        )
+
+    @app.get("/api/network/recent")
+    @limiter.limit("60 per minute")
+    def network_recent():
+        limit = clamp_int(request.args.get("limit"), default=24, lo=1, hi=50)
+        since = clamp_int(request.args.get("since"), default=0, lo=0, hi=10**12)
+        result = humanitarian.recent(limit=limit, since=since)
+        if result is None:
+            return jsonify({"error": "La red no está disponible ahora."}), 502
+        return jsonify(result)
+
+    @app.get("/api/network/record/<path:rid>")
+    @limiter.limit("60 per minute")
+    def network_record(rid):
+        rec = humanitarian.record(rid)
+        if rec is None:
+            return jsonify({"error": "No encontrado."}), 404
+        return jsonify(rec)
+
+    @app.get("/api/network/sources")
+    @limiter.limit("60 per minute")
+    def network_sources():
+        srcs = humanitarian.sources()
+        if srcs is None:
+            return jsonify({"error": "La red no está disponible ahora."}), 502
+        return jsonify({"items": srcs, "count": len(srcs)})
 
     @app.get("/api/gallery")
     def list_gallery():
