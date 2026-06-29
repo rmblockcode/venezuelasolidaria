@@ -181,6 +181,9 @@ export default function Directory() {
             </div>
           </div>
           <div className="spacer" />
+          <Link href="/red" className="header-link">
+            Red humanitaria
+          </Link>
           <Link href="/api-docs" className="header-link">
             API
           </Link>
@@ -334,6 +337,34 @@ export default function Directory() {
             </div>
           </div>
         </div>
+
+        {/* Acceso destacado a la Red Humanitaria; cuando hay búsqueda, lleva el
+            término a la otra vista (buscador puente). */}
+        <Link
+          href={query.trim() ? `/red?q=${encodeURIComponent(query.trim())}` : "/red"}
+          className="net-cta"
+        >
+          <span className="net-cta-ic" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="16.5" y1="16.5" x2="21" y2="21" />
+            </svg>
+          </span>
+          <span className="net-cta-txt">
+            {query.trim() ? (
+              <>
+                <strong>Buscar “{query.trim()}” en la Red Humanitaria</strong>
+                <span>Personas desaparecidas, hospitalizadas, acopios y más — muchas fuentes de Venezuela.</span>
+              </>
+            ) : (
+              <>
+                <strong>Red Humanitaria de Datos</strong>
+                <span>Busca personas desaparecidas, localizadas y hospitalizadas, centros de acopio y recursos en muchas fuentes de Venezuela.</span>
+              </>
+            )}
+          </span>
+          <span className="net-cta-go">{query.trim() ? "Buscar en la red →" : "Abrir buscador →"}</span>
+        </Link>
         </div>
       </section>
 
@@ -446,6 +477,8 @@ export default function Directory() {
         <div className="wrap footer-bottom">
           <span>© 2026 Venezuela Solidaria · Ayuda humanitaria, sin fines de lucro.</span>
           <span className="footer-links">
+            <Link href="/red">Red humanitaria</Link>
+            <Link href="/contribuciones">Contribuciones</Link>
             <Link href="/api-docs">API</Link>
             <Link href="/privacidad">Política de privacidad</Link>
           </span>
