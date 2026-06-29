@@ -20,6 +20,18 @@ export const REC_TYPES: Record<RecordType, { label: string; color: string }> = {
   otro: { label: "Otro", color: "#7c715d" },
 };
 
+// Etiqueta descriptiva del TIPO DE DATOS que aporta una fuente (no de un registro
+// individual). Se usa en /contribuciones para no leer "DESAPARECIDA" en una plataforma.
+export const SOURCE_KINDS: Record<string, string> = {
+  persona_desaparecida: "Personas desaparecidas",
+  persona_localizada: "Personas localizadas",
+  persona_hospitalizada: "Personas hospitalizadas",
+  centro_acopio: "Centros de acopio",
+  centro_donacion: "Centros de donación",
+  recurso: "Recursos",
+  otro: "Datos de ayuda",
+};
+
 // Orden de los chips de filtro (las personas primero por relevancia humanitaria).
 export const REC_ORDER: RecordType[] = [
   "persona_desaparecida",
