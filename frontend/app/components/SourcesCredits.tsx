@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { NetworkSource, RecordType } from "../lib/types";
-import { REC_TYPES } from "../lib/constants";
+import { REC_TYPES, SOURCE_KINDS } from "../lib/constants";
 import { fetchNetworkSources } from "../lib/api";
 
 export default function SourcesCredits() {
@@ -26,7 +26,8 @@ export default function SourcesCredits() {
         Venezuela Solidaria forma parte de una red abierta de datos humanitarios. La información que
         mostramos en <a href="/red">la búsqueda de la red</a> proviene del trabajo de muchas plataformas,
         equipos y voluntarios que abrieron sus datos para ayudar a encontrar personas y coordinar la ayuda
-        tras los sismos. Gracias a cada una de estas fuentes.
+        tras los sismos. Gracias a cada una de estas fuentes. La etiqueta de cada tarjeta indica el tipo de
+        datos que aporta.
       </p>
       <p className="cred-attrib">
         Agregadas por el{" "}
@@ -52,10 +53,11 @@ export default function SourcesCredits() {
         <ul className="cred-grid">
           {sources.map((s) => {
             const t = REC_TYPES[s.kind as RecordType] || REC_TYPES.otro;
+            const kindLabel = SOURCE_KINDS[s.kind || "otro"] || SOURCE_KINDS.otro;
             return (
               <li key={s.id} className="cred-card" style={{ "--cat": t.color } as React.CSSProperties}>
                 <div className="cred-top">
-                  <span className="cred-tag">{t.label}</span>
+                  <span className="cred-tag">{kindLabel}</span>
                   {typeof s.record_count === "number" && (
                     <span className="cred-count">{s.record_count.toLocaleString("es")} registros</span>
                   )}
