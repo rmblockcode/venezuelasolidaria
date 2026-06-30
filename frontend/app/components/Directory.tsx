@@ -35,7 +35,7 @@ export default function Directory() {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<CategoryKey | "todos">("todos");
   const [pais, setPais] = useState("todos");
-  const [timeframe, setTimeframe] = useState<Timeframe>("semana");
+  const [timeframe, setTimeframe] = useState<Timeframe>("todas");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [visible, setVisible] = useState(CHUNK);
@@ -65,18 +65,21 @@ export default function Directory() {
     if (scopes.includes("published")) load(true);
   });
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { todos: resources.length };
-    CAT_ORDER.forEach((k) => (c[k] = resources.filter((r) => r.category === k).length));
-    return c;
-  }, [resources]);
+  const [fDesde, fHasta] = timeframe === "rango" ? [desde, hasta] : timeframeRange(timeframe);
+  const dateActive = !!(fDesde || fHasta);
 
-  const verifiedCount = useMemo(() => resources.filter((r) => r.verified).length, [resources]);
-
-  // Country filter, available across all categories — built from whatever
-  // countries exist in the currently selected category.
+  // Country filter, available across all categories — built from the resources in
+  // the current category that also pass the date/search filters (so its counts stay
+  // coherent with the category chips).
   const countryChips = useMemo(() => {
-    const items = resources.filter((r) => cat === "todos" || r.category === cat);
+    const q = query.trim().toLowerCase();
+    const items = resources.filter(
+      (r) =>
+        (cat === "todos" || r.category === cat) &&
+        (!q ||
+          `${r.title} ${r.desc} ${r.city || ""} ${r.country || ""}`.toLowerCase().includes(q)) &&
+        (!dateActive || !isIsoDate(r.date) || matchesDateRange(r, fDesde, fHasta))
+    );
     const countries: string[] = [];
     items.forEach((r) => {
       if (r.country && !countries.includes(r.country)) countries.push(r.country);
@@ -85,23 +88,36 @@ export default function Directory() {
     const c: Record<string, number> = { todos: items.length };
     countries.forEach((co) => (c[co] = items.filter((r) => r.country === co).length));
     return { countries, counts: c };
-  }, [resources, cat]);
+  }, [resources, cat, query, fDesde, fHasta, dateActive]);
 
-  const [fDesde, fHasta] = timeframe === "rango" ? [desde, hasta] : timeframeRange(timeframe);
-  const dateActive = !!(fDesde || fHasta);
-
-  const list = useMemo(() => {
+  // Recursos que pasan TODOS los filtros menos la categoría. Es la base para que
+  // los contadores de los chips coincidan SIEMPRE con lo que se muestra (y cambien
+  // al cambiar país/búsqueda/fecha).
+  const baseFiltered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return resources.filter(
       (r) =>
-        (cat === "todos" || r.category === cat) &&
         (pais === "todos" || r.country === pais) &&
         (!q ||
           `${r.title} ${r.desc} ${r.city || ""} ${r.country || ""}`.toLowerCase().includes(q)) &&
         // The date filter only narrows dated events; undated resources always show.
         (!dateActive || !isIsoDate(r.date) || matchesDateRange(r, fDesde, fHasta))
     );
-  }, [resources, query, cat, pais, fDesde, fHasta, dateActive]);
+  }, [resources, query, pais, fDesde, fHasta, dateActive]);
+
+  const list = useMemo(
+    () => baseFiltered.filter((r) => cat === "todos" || r.category === cat),
+    [baseFiltered, cat]
+  );
+
+  // Contadores de los chips: derivados de la base filtrada → coinciden con lo mostrado.
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { todos: baseFiltered.length };
+    CAT_ORDER.forEach((k) => (c[k] = baseFiltered.filter((r) => r.category === k).length));
+    return c;
+  }, [baseFiltered]);
+
+  const verifiedCount = useMemo(() => list.filter((r) => r.verified).length, [list]);
 
   const shown = list.slice(0, visible);
   const hasMore = visible < list.length;
@@ -123,7 +139,7 @@ export default function Directory() {
   const filtersActive =
     cat !== "todos" ||
     pais !== "todos" ||
-    timeframe !== "semana" ||
+    timeframe !== "todas" ||
     query.trim() !== "" ||
     desde !== "" ||
     hasta !== "";
@@ -131,7 +147,7 @@ export default function Directory() {
   function clearFilters() {
     setCat("todos");
     setPais("todos");
-    setTimeframe("semana");
+    setTimeframe("todas");
     setQuery("");
     setDesde("");
     setHasta("");
