@@ -75,6 +75,7 @@ export interface NetworkSource {
   kind?: string | null;
   url?: string | null;
   record_count?: number | null;
+  last_sync?: string | null;
 }
 
 export interface SubmissionForm {

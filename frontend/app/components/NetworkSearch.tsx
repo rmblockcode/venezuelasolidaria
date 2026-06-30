@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { NetworkRecord } from "../lib/types";
 import { REC_TYPES, REC_ORDER, REC_PLURAL } from "../lib/constants";
-import { fetchNetwork, fetchNetworkRecent, fetchNetworkSourceCount } from "../lib/api";
+import { fetchNetwork, fetchNetworkRecent, fetchNetworkSources } from "../lib/api";
+import { timeAgo } from "../lib/format";
 import { cloudinaryFill } from "../lib/cloudinary";
 import RecIcon from "./RecIcon";
 import NetModal from "./NetModal";
@@ -20,13 +21,19 @@ export default function NetworkSearch() {
   const [total, setTotal] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [sources, setSources] = useState(0);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [selected, setSelected] = useState<NetworkRecord | null>(null);
   const offset = useRef(0);
   const reqId = useRef(0);
   const sentinel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchNetworkSourceCount().then(setSources).catch(() => {});
+    fetchNetworkSources()
+      .then((r) => {
+        setSources(r.count);
+        setLastSync(r.lastSync);
+      })
+      .catch(() => {});
   }, []);
 
   // Prefill desde ?q= (al llegar con un término desde el buscador de la portada).
@@ -114,7 +121,8 @@ export default function NetworkSearch() {
           <a href="https://redayuda.eriktaveras.com" target="_blank" rel="noopener noreferrer">
             índice común de la Red Humanitaria de Datos
           </a>
-          {sources > 0 && <> · {sources} fuentes conectadas</>} ·{" "}
+          {sources > 0 && <> · {sources} fuentes conectadas</>}
+          {timeAgo(lastSync) && <> · actualizado {timeAgo(lastSync)}</>} ·{" "}
           <a href="/contribuciones">ver contribuciones</a>
         </p>
       </section>

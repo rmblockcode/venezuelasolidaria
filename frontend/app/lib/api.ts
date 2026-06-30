@@ -63,22 +63,21 @@ export async function fetchNetworkRecent(limit = 24): Promise<NetworkRecord[]> {
   return data.items as NetworkRecord[];
 }
 
-export async function fetchNetworkSourceCount(): Promise<number> {
-  try {
-    const res = await fetch(`${API_BASE}/api/network/sources`, { cache: "no-store" });
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return (data.count as number) || 0;
-  } catch {
-    return 0;
-  }
+export interface NetworkSourcesResult {
+  items: NetworkSource[];
+  count: number;
+  lastSync: string | null;
 }
 
-export async function fetchNetworkSources(): Promise<NetworkSource[]> {
+export async function fetchNetworkSources(): Promise<NetworkSourcesResult> {
   const res = await fetch(`${API_BASE}/api/network/sources`, { cache: "no-store" });
   if (!res.ok) throw new Error(`La red no está disponible (${res.status})`);
   const data = await res.json();
-  return data.items as NetworkSource[];
+  return {
+    items: (data.items as NetworkSource[]) || [],
+    count: (data.count as number) || 0,
+    lastSync: (data.last_sync as string) || null,
+  };
 }
 
 export interface SubmissionResult {

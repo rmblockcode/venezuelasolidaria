@@ -560,7 +560,8 @@ def create_app():
         srcs = humanitarian.sources()
         if srcs is None:
             return jsonify({"error": "La red no está disponible ahora."}), 502
-        return jsonify({"items": srcs, "count": len(srcs)})
+        syncs = [s["last_sync"] for s in srcs if s.get("last_sync")]
+        return jsonify({"items": srcs, "count": len(srcs), "last_sync": max(syncs) if syncs else None})
 
     @app.get("/api/gallery")
     def list_gallery():
