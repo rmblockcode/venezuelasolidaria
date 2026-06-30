@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { NetworkRecord } from "../lib/types";
 import { REC_TYPES, REC_ORDER } from "../lib/constants";
 import { fetchNetwork, fetchNetworkRecent, fetchNetworkSourceCount } from "../lib/api";
+import { cloudinaryFill } from "../lib/cloudinary";
+import RecIcon from "./RecIcon";
+import NetModal from "./NetModal";
 
 const PAGE = 24;
 
@@ -17,8 +20,10 @@ export default function NetworkSearch() {
   const [total, setTotal] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [sources, setSources] = useState(0);
+  const [selected, setSelected] = useState<NetworkRecord | null>(null);
   const offset = useRef(0);
   const reqId = useRef(0);
+  const sentinel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchNetworkSourceCount().then(setSources).catch(() => {});
@@ -78,6 +83,22 @@ export default function NetworkSearch() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, type]);
+
+  // Scroll infinito: carga la siguiente página cuando el centinela entra en viewport.
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore) return;
+    const el = sentinel.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) run(false);
+      },
+      { rootMargin: "600px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loading, loadingMore, items.length]);
 
   return (
     <>
@@ -161,57 +182,88 @@ export default function NetworkSearch() {
           <>
             <div className="net-grid">
               {items.map((r) => (
-                <NetCard key={`${r.source_id}:${r.id}`} r={r} />
+                <NetCard key={`${r.source_id}:${r.id}`} r={r} onOpen={setSelected} />
               ))}
             </div>
             {hasMore && (
-              <div className="net-more">
-                <button onClick={() => run(false)} disabled={loadingMore}>
-                  {loadingMore ? "Cargando…" : "Cargar más"}
-                </button>
+              <div ref={sentinel} className="scroll-sentinel">
+                <span className="dots" aria-hidden />
+                Cargando más…
               </div>
             )}
           </>
         )}
       </section>
+
+      {selected && <NetModal record={selected} onClose={() => setSelected(null)} />}
     </>
   );
 }
 
-function NetCard({ r }: { r: NetworkRecord }) {
+function NetCard({ r, onOpen }: { r: NetworkRecord; onOpen: (r: NetworkRecord) => void }) {
   const t = REC_TYPES[r.record_type] || REC_TYPES.otro;
+  const [imgError, setImgError] = useState(false);
+  const showImage = !!r.image_url && !imgError;
   const place = [r.location_name || r.city, r.state, r.country].filter(Boolean).join(" · ");
+  const meta = [place, typeof r.age === "number" ? `${r.age} años` : ""].filter(Boolean).join(" · ");
+  // El estado solo se muestra si aporta algo (no si repite el tipo).
+  const status = r.status && r.status.toLowerCase() !== t.label.toLowerCase() ? r.status : "";
   return (
-    <article className="net-card" style={{ "--cat": t.color } as React.CSSProperties}>
-      <div className="net-card-top">
-        <span className="net-tag">{t.label}</span>
-        {typeof r.age === "number" && <span className="net-age">{r.age} años</span>}
-        {r.status && r.status.toLowerCase() !== t.label.toLowerCase() && (
-          <span className="net-status">{r.status}</span>
+    <article
+      className="net-card net-card-click"
+      style={{ "--cat": t.color } as React.CSSProperties}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(r)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(r);
+        }
+      }}
+      title="Ver detalle"
+    >
+      <div className="net-cover-wrap">
+        {showImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cloudinaryFill(r.image_url, 600, 360)}
+            alt=""
+            className="net-cover"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          // Sin foto: portada generada por tipo (degradado del color + icono).
+          <div className="net-cover net-cover-ph" aria-hidden>
+            <RecIcon k={r.record_type} size={42} />
+          </div>
         )}
+        <span className="net-cover-tag">{t.label}</span>
+        {status && <span className="net-cover-status">{status}</span>}
       </div>
 
       <div className="net-card-body">
-        {r.image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={r.image_url} alt="" className="net-thumb" loading="lazy" />
-        )}
-        <div className="net-card-main">
-          <h3>{r.title}</h3>
-          {r.summary && <p className="net-sum">{r.summary}</p>}
-          {place && <p className="net-place">{place}</p>}
-          {r.cedula_masked && <p className="net-ced">C.I. {r.cedula_masked}</p>}
+        <h3>{r.title}</h3>
+        {meta && <p className="net-place">{meta}</p>}
+        {r.summary && <p className="net-sum">{r.summary}</p>}
+        {r.cedula_masked && <p className="net-ced">C.I. {r.cedula_masked}</p>}
+        <div className="net-card-foot">
+          {r.source_url ? (
+            <a
+              className="net-source"
+              href={r.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Fuente: {r.source_name || "ver origen"} ↗
+            </a>
+          ) : (
+            <span className="net-source muted">Fuente: {r.source_name || "—"}</span>
+          )}
+          <span className="net-detail">Ver detalle →</span>
         </div>
-      </div>
-
-      <div className="net-card-foot">
-        {r.source_url ? (
-          <a className="net-source" href={r.source_url} target="_blank" rel="noopener noreferrer">
-            Fuente: {r.source_name || "ver origen"} ↗
-          </a>
-        ) : (
-          <span className="net-source muted">Fuente: {r.source_name || "—"}</span>
-        )}
       </div>
     </article>
   );
