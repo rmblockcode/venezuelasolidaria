@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { NetworkRecord } from "../lib/types";
-import { REC_TYPES, REC_ORDER } from "../lib/constants";
+import { REC_TYPES, REC_ORDER, REC_PLURAL } from "../lib/constants";
 import { fetchNetwork, fetchNetworkRecent, fetchNetworkSourceCount } from "../lib/api";
 import { cloudinaryFill } from "../lib/cloudinary";
 import RecIcon from "./RecIcon";
@@ -148,7 +148,7 @@ export default function NetworkSearch() {
               style={chipStyle(type === rt, REC_TYPES[rt].color)}
               onClick={() => setType((t) => (t === rt ? "" : rt))}
             >
-              {REC_TYPES[rt].label}
+              {REC_PLURAL[rt]}
             </button>
           ))}
         </div>

@@ -32,6 +32,18 @@ export const SOURCE_KINDS: Record<string, string> = {
   otro: "Datos de ayuda",
 };
 
+// Etiqueta en plural para los CHIPS de categoría (la categoría, no un registro
+// individual). En la tarjeta seguimos usando REC_TYPES[].label.
+export const REC_PLURAL: Record<RecordType, string> = {
+  persona_desaparecida: "Desaparecidos",
+  persona_localizada: "Localizados",
+  persona_hospitalizada: "Hospitalizados",
+  centro_acopio: "Acopios",
+  centro_donacion: "Donaciones",
+  recurso: "Recursos",
+  otro: "Otros",
+};
+
 // Orden de los chips de filtro (las personas primero por relevancia humanitaria).
 export const REC_ORDER: RecordType[] = [
   "persona_desaparecida",
