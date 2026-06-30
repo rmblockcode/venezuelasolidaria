@@ -8,7 +8,9 @@ cada registro a un esquema limpio (omitiendo la cédula completa).
 
 import json
 import os
+import re
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -105,29 +107,102 @@ def normalize(rec):
     }
 
 
-def search(q="", record_type="", city="", source_id="", limit=24, offset=0):
-    """Busca en la red. Devuelve dict normalizado o None si la red no responde."""
+_PAGE = 50  # límite máx por página en la API de redayuda
+_WORD = re.compile(r"[a-z0-9]+")
+
+
+def _fold(s):
+    """minúsculas + sin acentos, para puntuar sin que acentos/mayúsculas estorben."""
+    s = unicodedata.normalize("NFKD", str(s or ""))
+    return "".join(c for c in s if not unicodedata.combining(c)).lower()
+
+
+def _toks(s):
+    return _WORD.findall(_fold(s))
+
+
+def _raw_search(q, record_type="", city="", source_id="", limit=_PAGE, offset=0):
     data = _get(
         "/api/records/search",
-        {
-            "q": q,
-            "record_type": record_type,
-            "city": city,
-            "source_id": source_id,
-            "limit": limit,
-            "offset": offset,
-        },
+        {"q": q, "record_type": record_type, "city": city, "source_id": source_id,
+         "limit": limit, "offset": offset},
     )
-    if not isinstance(data, dict):
-        return None
-    results = data.get("results") or []
-    items = [n for n in (normalize(r.get("record")) for r in results) if n]
-    return {
-        "items": items,
-        "total_matches": data.get("total_matches", len(items)),
-        "source_count": data.get("source_count"),
-        "record_types": data.get("record_types") or [],
-    }
+    return data if isinstance(data, dict) else None
+
+
+def _score_rec(rec, qtokens, qjoin, base):
+    """Cercanía del registro a la búsqueda. Prioriza coincidencia exacta y que estén
+    TODAS las palabras; el apellido suelto puntúa poco."""
+    blob = _fold(" ".join(str(rec.get(k) or "") for k in ("person_name", "title", "organization")))
+    btoks = _WORD.findall(blob)
+    bset = set(btoks)
+    bjoin = " ".join(btoks)
+    matched = sum(1 for t in qtokens if t in bset)      # palabras como token completo
+    sub = sum(1 for t in qtokens if t in blob)          # palabras como subcadena
+    s = 0.0
+    if qtokens and bjoin == qjoin:
+        s += 100000                                     # nombre == búsqueda
+    if qtokens and matched == len(qtokens):
+        s += 50000                                      # están TODAS las palabras
+    s += 5000 * matched + 500 * sub + 0.1 * (base or 0)
+    return s
+
+
+def search(q="", record_type="", city="", source_id="", limit=24, offset=0):
+    """Busca en la red. Para nombres (2+ palabras) reúne candidatos y los re-ordena
+    por cercanía (las coincidencias más exactas primero). Devuelve None si falla."""
+    q = (q or "").strip()
+    qtokens = _toks(q)
+
+    # 1 palabra / sin query / filtros: confiamos en el orden de redayuda (ya va bien).
+    if len(qtokens) < 2:
+        data = _raw_search(q, record_type, city, source_id, limit=limit, offset=offset)
+        if data is None:
+            return None
+        items = [n for n in (normalize(r.get("record")) for r in (data.get("results") or [])) if n]
+        return {"items": items, "total_matches": data.get("total_matches", len(items)),
+                "source_count": data.get("source_count"), "record_types": data.get("record_types") or []}
+
+    # Multi-palabra (nombres): construir un pool de candidatos y re-rankear.
+    pool = {}            # id -> (record, score_redayuda)
+    meta = {"source_count": None, "record_types": []}
+
+    def ingest(data):
+        if not isinstance(data, dict):
+            return
+        meta["source_count"] = data.get("source_count") or meta["source_count"]
+        if data.get("record_types"):
+            meta["record_types"] = data["record_types"]
+        for r in data.get("results") or []:
+            rec = r.get("record") or {}
+            rid = rec.get("id")
+            if rid and rid not in pool:
+                pool[rid] = (rec, r.get("score") or 0)
+
+    # query completa (orden de redayuda), 2 páginas
+    for off in (0, _PAGE):
+        ingest(_raw_search(q, record_type, city, source_id, limit=_PAGE, offset=off))
+
+    # palabra más distintiva (menor total) — rescata al que redayuda enterró
+    uniq = list(dict.fromkeys(qtokens))
+    counts = []
+    for t in uniq:
+        d = _raw_search(t, record_type, city, source_id, limit=1, offset=0)
+        if d:
+            counts.append((t, d.get("total_matches", 0)))
+    if counts:
+        rare = min(counts, key=lambda c: c[1])[0]
+        ingest(_raw_search(rare, record_type, city, source_id, limit=_PAGE, offset=0))
+
+    qjoin = " ".join(qtokens)
+    ranked = sorted(
+        pool.values(), key=lambda rv: (_score_rec(rv[0], qtokens, qjoin, rv[1]), rv[1]), reverse=True
+    )
+    window = ranked[offset:offset + limit]
+    items = [n for n in (normalize(rec) for rec, _ in window) if n]
+    # total = tamaño del pool re-rankeado (lo relevante); así "cargar más" no cicla.
+    return {"items": items, "total_matches": len(pool),
+            "source_count": meta["source_count"], "record_types": meta["record_types"]}
 
 
 def recent(limit=24, since=0):
