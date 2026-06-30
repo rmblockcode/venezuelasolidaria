@@ -4,15 +4,20 @@ import { useEffect, useState } from "react";
 import { NetworkSource, RecordType } from "../lib/types";
 import { REC_TYPES, SOURCE_KINDS } from "../lib/constants";
 import { fetchNetworkSources } from "../lib/api";
+import { timeAgo } from "../lib/format";
 
 export default function SourcesCredits() {
   const [sources, setSources] = useState<NetworkSource[]>([]);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     fetchNetworkSources()
-      .then((s) => setSources([...s].sort((a, b) => (b.record_count || 0) - (a.record_count || 0))))
+      .then((r) => {
+        setSources([...r.items].sort((a, b) => (b.record_count || 0) - (a.record_count || 0)));
+        setLastSync(r.lastSync);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "No se pudo cargar."))
       .finally(() => setLoading(false));
   }, []);
@@ -39,7 +44,7 @@ export default function SourcesCredits() {
             {" "}· {sources.length} fuentes · {total.toLocaleString("es")} registros
           </>
         )}
-        .
+        {timeAgo(lastSync) && <> · sincronizado {timeAgo(lastSync)}</>}.
       </p>
 
       {loading ? (
@@ -67,6 +72,9 @@ export default function SourcesCredits() {
                   <a className="cred-link" href={s.url} target="_blank" rel="noopener noreferrer">
                     {prettyHost(s.url)} ↗
                   </a>
+                )}
+                {timeAgo(s.last_sync) && (
+                  <span className="cred-sync">Actualizado {timeAgo(s.last_sync)}</span>
                 )}
               </li>
             );

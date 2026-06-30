@@ -164,6 +164,7 @@ def sources():
             "kind": s.get("kind"),
             "url": s.get("url"),
             "record_count": s.get("record_count"),
+            "last_sync": s.get("last_sync"),
         }
         for s in data
         if isinstance(s, dict)

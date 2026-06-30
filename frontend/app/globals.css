@@ -417,6 +417,7 @@ footer.site a{color:var(--brand);font-weight:600}
 .cred-card h3{margin:0;font-family:var(--font-serif),serif;font-weight:600;font-size:18px;line-height:1.25;color:var(--ink)}
 .cred-link{font-size:12.5px;font-weight:600;color:var(--brand);text-decoration:none;word-break:break-word}
 .cred-link:hover{text-decoration:underline;text-underline-offset:2px}
+.cred-sync{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .cred-foot{margin:26px 0 0;font-size:14px;line-height:1.6;color:var(--ink-2)}
 @media (max-width:640px){
   .cred{padding:8px 16px 72px}
